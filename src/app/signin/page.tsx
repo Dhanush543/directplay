@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import SignInForm from "@/components/auth/SignInForm";
 
 export const dynamic = "force-static";
-export const revalidate = 60 * 60 * 6;
-
+export const revalidate = 86400; // 24h
 export const metadata: Metadata = {
     title: "Sign in – DirectPlay",
     description: "Access your DirectPlay account.",

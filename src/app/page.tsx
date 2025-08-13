@@ -5,8 +5,7 @@ import { siteUrl } from "@/lib/site";
 
 // Build statically + revalidate daily
 export const dynamic = "force-static";
-export const revalidate = 60 * 60 * 24; // 24h
-
+export const revalidate = 86400; // 24h
 export const metadata: Metadata = {
   title: "DirectPlay — Master Java. Crack Your Dream Job.",
   description:

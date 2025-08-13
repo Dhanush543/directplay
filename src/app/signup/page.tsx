@@ -4,8 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SignUpForm from "@/components/auth/SignUpForm";
 
 export const dynamic = "force-static";
-export const revalidate = 60 * 60 * 6;
-
+export const revalidate = 86400; // 24h
 export const metadata: Metadata = {
     title: "Create account – DirectPlay",
     description: "Sign up to start learning.",

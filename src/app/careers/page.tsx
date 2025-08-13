@@ -8,7 +8,7 @@ import CareerApplyLink from "@/components/CareerApplyLink";
 import NotifyMeForm from "@/components/NotifyMeForm";
 
 export const dynamic = "force-static";
-export const revalidate = 60 * 60 * 24;
+export const revalidate = 86400; // 24h
 
 export const metadata: Metadata = {
     title: "Careers – DirectPlay",
