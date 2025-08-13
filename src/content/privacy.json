@@ -1,0 +1,41 @@
+{
+    "title": "Privacy Policy",
+    "subtitle": "How we collect, use, and protect your data.",
+    "lastUpdated": "2025-08-13",
+    "sections": [
+        {
+            "heading": "Information we collect",
+            "body": [
+                "We collect information you provide directly (like name and email), and automatically through product analytics (usage events, device, and basic technical metadata)."
+            ],
+            "list": [
+                "Account data (name, email)",
+                "Product usage (pages, clicks, completion state)",
+                "Technical data (browser, OS, IP region)"
+            ]
+        },
+        {
+            "heading": "How we use information",
+            "body": [
+                "We use your data to operate DirectPlay, improve learning outcomes, personalize your experience, and communicate important updates."
+            ],
+            "list": [
+                "Operate and secure our services",
+                "Improve content and features",
+                "Provide support and important notifications"
+            ]
+        },
+        {
+            "heading": "Your choices",
+            "body": [
+                "You can request data access or deletion at any time. Contact us if you have questions about privacy or your rights."
+            ]
+        },
+        {
+            "heading": "Contact",
+            "body": [
+                "Questions about privacy? Reach us at support@directplay.in"
+            ]
+        }
+    ]
+}

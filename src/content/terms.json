@@ -1,0 +1,41 @@
+{
+    "title": "Terms of Service",
+    "subtitle": "Please read these terms carefully before using DirectPlay.",
+    "lastUpdated": "2025-08-13",
+    "sections": [
+        {
+            "heading": "Acceptance of terms",
+            "body": [
+                "By accessing or using DirectPlay, you agree to these Terms. If you don’t agree, please do not use the service."
+            ]
+        },
+        {
+            "heading": "Your responsibilities",
+            "list": [
+                "Use DirectPlay only for lawful purposes",
+                "Keep your account credentials secure",
+                "Respect intellectual property and other users"
+            ]
+        },
+        {
+            "heading": "Prohibited activities",
+            "list": [
+                "Reverse engineering or scraping content",
+                "Sharing paid content publicly",
+                "Interfering with service operation or security"
+            ]
+        },
+        {
+            "heading": "Limitation of liability",
+            "body": [
+                "DirectPlay is provided “as is”. To the fullest extent permitted by law, we will not be liable for indirect, incidental, or consequential damages."
+            ]
+        },
+        {
+            "heading": "Termination",
+            "body": [
+                "We may suspend or terminate access for violations of these Terms or for abusive behavior."
+            ]
+        }
+    ]
+}

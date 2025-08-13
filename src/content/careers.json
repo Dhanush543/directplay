@@ -1,0 +1,46 @@
+{
+    "title": "Careers",
+    "subtitle": "Join us to build the most effective way to learn job‑ready skills.",
+    "openRoles": [
+        {
+            "id": "fe-engineer",
+            "title": "Frontend Engineer",
+            "location": "Remote",
+            "type": "Full‑time",
+            "intro": [
+                "Help craft delightful learning experiences with modern React and TypeScript."
+            ],
+            "responsibilities": [
+                "Ship polished UI with performance in mind",
+                "Collaborate with design on accessible components",
+                "Own features end‑to‑end"
+            ],
+            "requirements": [
+                "Strong React + TypeScript",
+                "Excellent CSS/Tailwind skills",
+                "Product sense and attention to detail"
+            ],
+            "applyUrl": "mailto:careers@directplay.in?subject=Frontend%20Engineer%20Application"
+        },
+        {
+            "id": "content-lead",
+            "title": "Content Lead (Java)",
+            "location": "Remote/Hybrid",
+            "type": "Contract/Full‑time",
+            "intro": [
+                "Lead Java curriculum with outcomes‑first content and interactive notes."
+            ],
+            "responsibilities": [
+                "Design course outlines and projects",
+                "Author interactive notes and quizzes",
+                "Review learner feedback and iterate"
+            ],
+            "requirements": [
+                "Deep Java expertise",
+                "Teaching or mentoring experience",
+                "Clear, concise technical writing"
+            ],
+            "applyUrl": "mailto:careers@directplay.in?subject=Content%20Lead%20(Java)%20Application"
+        }
+    ]
+}
