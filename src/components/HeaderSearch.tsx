@@ -1,3 +1,4 @@
+// src/components/HeaderSearch.tsx
 "use client";
 
 import { track } from "@/lib/analytics";
@@ -61,14 +62,14 @@ export default function HeaderSearch() {
         setPreview(null);
     }, [params]);
 
-    // Close dropdown when route changes (e.g., user navigates elsewhere)
+    // Close dropdown when route changes
     useEffect(() => {
         setOpen(false);
         setActiveIndex(-1);
         setPreview(null);
     }, [pathname]);
 
-    // Prefetch /search for snappier navigation
+    // Prefetch /search
     useEffect(() => {
         try {
             router.prefetch("/search");
@@ -87,7 +88,10 @@ export default function HeaderSearch() {
         const t = term.trim();
         if (!t) return;
         try {
-            const next = [t, ...recent.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, MAX_RECENT);
+            const next = [t, ...recent.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(
+                0,
+                MAX_RECENT
+            );
             setRecent(next);
             localStorage.setItem(RECENT_KEY, JSON.stringify(next));
         } catch { }
@@ -197,70 +201,7 @@ export default function HeaderSearch() {
         };
     }, [q]);
 
-    function onSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        const term = (preview ?? q).trim();
-        if (!term) return;
-        remember(term);
-        setOpen(false);
-        setActiveIndex(-1);
-        setPreview(null);
-        track("search_submit", { term, source: "header" });
-        router.push(`/search?q=${encodeURIComponent(term)}`);
-    }
-
-    function clear() {
-        setQ("");
-        setPreview(null);
-        if (pathname === "/search") router.push("/search");
-        inputRef.current?.focus();
-        setOpen(true);
-    }
-
-    // Keyboard inside the input (dropdown)
-    function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-        const trimmed = (preview ?? q).trim();
-        const hasQuery = q.trim().length > 0;
-
-        if (e.key === "Enter") {
-            e.preventDefault();
-            if (!trimmed) return;
-            remember(trimmed);
-            setOpen(false);
-            setActiveIndex(-1);
-            setPreview(null);
-            track("search_submit", { term: trimmed, source: "header" });
-            router.push(`/search?q=${encodeURIComponent(trimmed)}`);
-            return;
-        }
-
-        if (!open) return;
-
-        // Arrow nav
-        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-            const total = (hasQuery ? suggestions.length : recent.length) || 0;
-            if (!total) return;
-
-            e.preventDefault();
-            setActiveIndex((prev) => {
-                const next =
-                    e.key === "ArrowDown"
-                        ? (prev + 1) % Math.max(total, 1)
-                        : (prev - 1 + Math.max(total, 1)) % Math.max(total, 1);
-
-                // Live preview only for RECENT mode (no typed query)
-                if (!hasQuery && recent[next]) {
-                    setPreview(recent[next]);
-                }
-                return next;
-            });
-            return;
-        }
-
-        // If user types any character, exit preview mode
-        if (e.key.length === 1) setPreview(null);
-    }
-
+    // Group for render
     type Row = { header: Suggestion["group"] } | Suggestion;
 
     const grouped: Row[] = useMemo(() => {
@@ -282,13 +223,109 @@ export default function HeaderSearch() {
         return out;
     }, [suggestions, q]);
 
+    // A flat list of only suggestion rows in the same order we render them
+    const flatSuggestions: Suggestion[] = useMemo(
+        () => grouped.filter((r): r is Suggestion => "id" in r),
+        [grouped]
+    );
+
     const itemCount = q.trim() ? suggestions.length : recent.length;
+
+    function goToSuggestion(s: Suggestion) {
+        track("search_select_suggestion_enter", {
+            term: q.trim(),
+            dest: s.href,
+            group: s.group,
+            label: s.label,
+        });
+        remember(q.trim());
+        setOpen(false);
+        setActiveIndex(-1);
+        setPreview(null);
+        router.push(s.href);
+    }
+
+    function submitQuery(term: string) {
+        const t = term.trim();
+        if (!t) return;
+        remember(t);
+        setOpen(false);
+        setActiveIndex(-1);
+        setPreview(null);
+        track("search_submit", { term: t, source: "header" });
+        router.push(`/search?q=${encodeURIComponent(t)}`);
+    }
+
+    function onSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        // Prefer highlighted suggestion if one exists
+        if (open && activeIndex >= 0) {
+            if (q.trim()) {
+                const sel = flatSuggestions[activeIndex];
+                if (sel) return goToSuggestion(sel);
+            } else {
+                const term = recent[activeIndex];
+                if (term) return submitQuery(term);
+            }
+        }
+        submitQuery(preview ?? q);
+    }
+
+    function clear() {
+        setQ("");
+        setPreview(null);
+        if (pathname === "/search") router.push("/search");
+        inputRef.current?.focus();
+        setOpen(true);
+    }
+
+    // Keyboard inside the input (dropdown)
+    function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        const hasQuery = q.trim().length > 0;
+
+        if (e.key === "Enter") {
+            e.preventDefault();
+            // Same logic as submit: prefer the highlighted suggestion
+            if (open && activeIndex >= 0) {
+                if (hasQuery) {
+                    const sel = flatSuggestions[activeIndex];
+                    if (sel) return goToSuggestion(sel);
+                } else {
+                    const term = recent[activeIndex];
+                    if (term) return submitQuery(term);
+                }
+            }
+            return submitQuery(preview ?? q);
+        }
+
+        if (!open) return;
+
+        // Arrow nav
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            const total = (hasQuery ? flatSuggestions.length : recent.length) || 0;
+            if (!total) return;
+
+            e.preventDefault();
+            setActiveIndex((prev) => {
+                const next =
+                    e.key === "ArrowDown"
+                        ? (prev + 1) % Math.max(total, 1)
+                        : (prev - 1 + Math.max(total, 1)) % Math.max(total, 1);
+
+                if (!hasQuery && recent[next]) setPreview(recent[next]);
+                return next;
+            });
+            return;
+        }
+
+        // If user types any character, exit preview mode
+        if (e.key.length === 1) setPreview(null);
+    }
 
     return (
         <div className="relative" ref={wrapRef}>
             <form onSubmit={onSubmit} className="flex items-center gap-2" onFocus={() => setOpen(true)}>
                 <div className="relative">
-                    {/* Left icon inside input */}
                     <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         ref={inputRef}
@@ -383,66 +420,51 @@ export default function HeaderSearch() {
                                 <div className="px-3 py-2 text-sm text-slate-500">No results. Press Enter to search.</div>
                             )}
 
-                            {(() => {
-                                // Maintain a running index that only increments for suggestion rows (not headers)
-                                let runningIndex = -1;
-                                return grouped.map((item, idx) => {
-                                    if ("header" in item) {
-                                        return (
-                                            <div
-                                                key={`h-${item.header}-${idx}`}
-                                                className="px-3 pt-3 pb-1 text-xs font-medium uppercase tracking-wide text-slate-500"
-                                            >
-                                                {item.header}
-                                            </div>
-                                        );
-                                    }
-
-                                    runningIndex += 1;
-                                    const isActive = activeIndex === runningIndex;
-
+                            {grouped.map((item, idx) => {
+                                if ("header" in item) {
                                     return (
-                                        <button
-                                            id={`dp-suggest-${runningIndex}`}
-                                            key={item.id}
-                                            className={clsx(
-                                                "w-full px-3 py-2 text-left text-sm hover:bg-slate-50",
-                                                isActive && "bg-indigo-50"
-                                            )}
-                                            onMouseEnter={() => setActiveIndex(runningIndex)}
-                                            onMouseDown={(e) => e.preventDefault()}
-                                            onClick={() => {
-                                                track("search_select_suggestion", {
-                                                    term: q.trim(),
-                                                    dest: item.href,
-                                                    group: item.group,
-                                                    label: item.label,
-                                                });
-                                                remember(q.trim());
-                                                setOpen(false);
-                                                setActiveIndex(-1);
-                                                setPreview(null);
-                                                router.push(item.href);
-                                            }}
-                                            role="option"
-                                            aria-selected={isActive}
+                                        <div
+                                            key={`h-${item.header}`}
+                                            className="px-3 pt-3 pb-1 text-xs font-medium uppercase tracking-wide text-slate-500"
                                         >
-                                            <div className="font-medium">{highlight(item.label, q)}</div>
-                                            {item.sublabel && (
-                                                <div className="mt-0.5 line-clamp-1 text-xs text-slate-500">
-                                                    {highlight(item.sublabel, q)}
-                                                </div>
-                                            )}
-                                        </button>
+                                            {item.header}
+                                        </div>
                                     );
-                                });
-                            })()}
+                                }
+
+                                // how many non-header items up to this point
+                                const idxInDropdown =
+                                    grouped.slice(0, idx + 1).reduce((acc, cur) => (("header" in cur ? acc : acc + 1)), 0) - 1;
+
+                                return (
+                                    <button
+                                        id={`dp-suggest-${idxInDropdown}`}
+                                        key={item.id}
+                                        className={clsx(
+                                            "w-full px-3 py-2 text-left text-sm hover:bg-slate-50",
+                                            activeIndex === idxInDropdown && "bg-indigo-50"
+                                        )}
+                                        onMouseEnter={() => setActiveIndex(idxInDropdown)}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => goToSuggestion(item)}
+                                        role="option"
+                                        aria-selected={activeIndex === idxInDropdown}
+                                    >
+                                        <div className="font-medium">{highlight(item.label, q)}</div>
+                                        {item.sublabel && (
+                                            <div className="mt-0.5 line-clamp-1 text-xs text-slate-500">
+                                                {highlight(item.sublabel, q)}
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
 
                     <div className="flex items-center justify-between border-t border-slate-100 px-3 py-2 text-xs text-slate-500">
                         <span>
-                            Press <kbd className="rounded border px-1">Enter</kbd> to search
+                            Press <kbd className="rounded border px-1">Enter</kbd> to select
                         </span>
                         <span>
                             Focus with <kbd className="rounded border px-1">/</kbd>
