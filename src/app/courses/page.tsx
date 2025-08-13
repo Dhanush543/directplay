@@ -1,3 +1,4 @@
+// src/app/courses/page.tsx
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -5,7 +6,7 @@ import { siteUrl } from "@/lib/site";
 import CoursesClient from "./CoursesClient";
 
 export const dynamic = "force-static";
-export const revalidate = 60 * 60 * 24;
+export const revalidate = 86400; // 24h as a literal
 
 export const metadata: Metadata = {
     title: "Courses – DirectPlay",
@@ -37,7 +38,6 @@ export default function CoursesPage() {
                 </p>
             </header>
 
-            {/* Wrap the client piece (uses useSearchParams) in Suspense to satisfy Next.js */}
             <Suspense
                 fallback={
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
