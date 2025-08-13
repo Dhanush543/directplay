@@ -30,13 +30,32 @@ export const metadata: Metadata = {
     },
 };
 
+// Local type guards so we don't have to change lib/siteContent
 type ApplyEmail = { type: "email"; to: string; subject?: string };
 type ApplyUrl = { type: "url"; url: string };
+
 function isApplyEmail(a: unknown): a is ApplyEmail {
-    return !!a && typeof a === "object" && (a as any).type === "email" && typeof (a as any).to === "string";
+    return (
+        typeof a === "object" &&
+        a !== null &&
+        // discriminant
+        "type" in a &&
+        (a as { type?: unknown }).type === "email" &&
+        // shape
+        "to" in a &&
+        typeof (a as { to?: unknown }).to === "string"
+    );
 }
+
 function isApplyUrl(a: unknown): a is ApplyUrl {
-    return !!a && typeof a === "object" && (a as any).type === "url" && typeof (a as any).url === "string";
+    return (
+        typeof a === "object" &&
+        a !== null &&
+        "type" in a &&
+        (a as { type?: unknown }).type === "url" &&
+        "url" in a &&
+        typeof (a as { url?: unknown }).url === "string"
+    );
 }
 function employmentTypeFrom(rType: string) {
     const t = rType.toLowerCase();

@@ -1,4 +1,3 @@
-// src/components/HeaderSearch.tsx
 "use client";
 
 import { track } from "@/lib/analytics";
@@ -88,10 +87,7 @@ export default function HeaderSearch() {
         const t = term.trim();
         if (!t) return;
         try {
-            const next = [t, ...recent.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(
-                0,
-                MAX_RECENT
-            );
+            const next = [t, ...recent.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, MAX_RECENT);
             setRecent(next);
             localStorage.setItem(RECENT_KEY, JSON.stringify(next));
         } catch { }
@@ -265,17 +261,25 @@ export default function HeaderSearch() {
         if (e.key.length === 1) setPreview(null);
     }
 
-    const grouped = useMemo(() => {
+    type Row = { header: Suggestion["group"] } | Suggestion;
+
+    const grouped: Row[] = useMemo(() => {
         if (!q.trim()) return [];
-        const groups: Record<Suggestion["group"], Suggestion[]> = {
+        const buckets: Record<Suggestion["group"], Suggestion[]> = {
             Courses: [],
             FAQ: [],
             Outcomes: [],
         };
-        for (const s of suggestions) groups[s.group].push(s);
-        return (Object.keys(groups) as Suggestion["group"][]).flatMap((g) =>
-            groups[g].length ? [{ header: g } as any, ...groups[g]] : []
-        );
+        for (const s of suggestions) buckets[s.group].push(s);
+
+        const out: Row[] = [];
+        (Object.keys(buckets) as Suggestion["group"][]).forEach((g) => {
+            if (buckets[g].length) {
+                out.push({ header: g });
+                out.push(...buckets[g]);
+            }
+        });
+        return out;
     }, [suggestions, q]);
 
     const itemCount = q.trim() ? suggestions.length : recent.length;
@@ -379,56 +383,60 @@ export default function HeaderSearch() {
                                 <div className="px-3 py-2 text-sm text-slate-500">No results. Press Enter to search.</div>
                             )}
 
-                            {grouped.map((item, idx) => {
-                                if ("header" in item) {
-                                    return (
-                                        <div
-                                            key={`h-${item.header}`}
-                                            className="px-3 pt-3 pb-1 text-xs font-medium uppercase tracking-wide text-slate-500"
-                                        >
-                                            {item.header}
-                                        </div>
-                                    );
-                                }
-
-                                const idxInDropdown =
-                                    grouped.slice(0, idx + 1).reduce((acc, cur) => (("header" in cur ? acc : acc + 1)), 0) - 1;
-
-                                return (
-                                    <button
-                                        id={`dp-suggest-${idxInDropdown}`}
-                                        key={item.id}
-                                        className={clsx(
-                                            "w-full px-3 py-2 text-left text-sm hover:bg-slate-50",
-                                            activeIndex === idxInDropdown && "bg-indigo-50"
-                                        )}
-                                        onMouseEnter={() => setActiveIndex(idxInDropdown)}
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => {
-                                            track("search_select_suggestion", {
-                                                term: q.trim(),
-                                                dest: item.href,
-                                                group: item.group,
-                                                label: item.label,
-                                            });
-                                            remember(q.trim());
-                                            setOpen(false);
-                                            setActiveIndex(-1);
-                                            setPreview(null);
-                                            router.push(item.href);
-                                        }}
-                                        role="option"
-                                        aria-selected={activeIndex === idxInDropdown}
-                                    >
-                                        <div className="font-medium">{highlight(item.label, q)}</div>
-                                        {item.sublabel && (
-                                            <div className="mt-0.5 line-clamp-1 text-xs text-slate-500">
-                                                {highlight(item.sublabel, q)}
+                            {(() => {
+                                // Maintain a running index that only increments for suggestion rows (not headers)
+                                let runningIndex = -1;
+                                return grouped.map((item, idx) => {
+                                    if ("header" in item) {
+                                        return (
+                                            <div
+                                                key={`h-${item.header}-${idx}`}
+                                                className="px-3 pt-3 pb-1 text-xs font-medium uppercase tracking-wide text-slate-500"
+                                            >
+                                                {item.header}
                                             </div>
-                                        )}
-                                    </button>
-                                );
-                            })}
+                                        );
+                                    }
+
+                                    runningIndex += 1;
+                                    const isActive = activeIndex === runningIndex;
+
+                                    return (
+                                        <button
+                                            id={`dp-suggest-${runningIndex}`}
+                                            key={item.id}
+                                            className={clsx(
+                                                "w-full px-3 py-2 text-left text-sm hover:bg-slate-50",
+                                                isActive && "bg-indigo-50"
+                                            )}
+                                            onMouseEnter={() => setActiveIndex(runningIndex)}
+                                            onMouseDown={(e) => e.preventDefault()}
+                                            onClick={() => {
+                                                track("search_select_suggestion", {
+                                                    term: q.trim(),
+                                                    dest: item.href,
+                                                    group: item.group,
+                                                    label: item.label,
+                                                });
+                                                remember(q.trim());
+                                                setOpen(false);
+                                                setActiveIndex(-1);
+                                                setPreview(null);
+                                                router.push(item.href);
+                                            }}
+                                            role="option"
+                                            aria-selected={isActive}
+                                        >
+                                            <div className="font-medium">{highlight(item.label, q)}</div>
+                                            {item.sublabel && (
+                                                <div className="mt-0.5 line-clamp-1 text-xs text-slate-500">
+                                                    {highlight(item.sublabel, q)}
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                });
+                            })()}
                         </div>
                     )}
 
