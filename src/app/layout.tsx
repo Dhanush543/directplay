@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Link from "next/link";
+import { Suspense } from "react"; // ← added
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Rocket } from "lucide-react";
@@ -74,7 +75,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </nav>
 
             <div className="hidden md:flex items-center gap-3">
-              <HeaderSearch />
+              {/* Wrapped in Suspense because HeaderSearch uses useSearchParams */}
+              <Suspense fallback={<div className="h-9 w-72" aria-hidden />}>
+                <HeaderSearch />
+              </Suspense>
               <Button asChild variant="ghost" className="hidden lg:inline-flex">
                 <Link href="/auth?view=signin">Sign in</Link>
               </Button>
