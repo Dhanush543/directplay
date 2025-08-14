@@ -1,9 +1,9 @@
 // src/app/home-client.tsx
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,8 +21,13 @@ import {
     Flame,
     Code,
     Award,
-    MessageSquare,
 } from "lucide-react";
+
+// Lazy-load Framer Motion to reduce unused JS on first paint
+const MotionDiv = dynamic(
+    () => import("framer-motion").then((m) => m.motion.div),
+    { ssr: false, loading: () => <div /> }
+);
 
 /* ---------- data ---------- */
 const courses = [
@@ -106,7 +111,7 @@ const testimonials = [
 const StarRow = ({ count = 5 }: { count?: number }) => (
     <div className="flex gap-1">
         {Array.from({ length: count }).map((_, i) => (
-            <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+            <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" aria-hidden="true" />
         ))}
     </div>
 );
@@ -137,13 +142,13 @@ function CodeBlock({ code }: { code: string }) {
                 aria-label={copied ? "Copied to clipboard" : "Copy code to clipboard"}
                 className={[
                     "absolute top-3 right-3",
-                    "bg-slate-200 text-slate-800 hover:bg-slate-300", // Neutral grey
+                    "bg-slate-200 text-slate-800 hover:bg-slate-300",
                     "shadow-sm ring-1 ring-black/10",
                 ].join(" ")}
             >
                 {copied ? (
                     <span className="inline-flex items-center gap-1.5">
-                        <Check className="h-4 w-4" /> Copied
+                        <Check className="h-4 w-4" aria-hidden="true" /> Copied
                     </span>
                 ) : (
                     "Copy"
@@ -164,14 +169,14 @@ function CourseCard({ c }: { c: (typeof courses)[number] }) {
                     </Badge>
                 </div>
                 <div className="mt-2 flex items-center gap-2 text-slate-600">
-                    <Clock className="h-4 w-4" /> <span>{c.duration}</span>
+                    <Clock className="h-4 w-4" aria-hidden="true" /> <span>{c.duration}</span>
                 </div>
             </CardHeader>
             <CardContent className="grow flex flex-col">
                 <ul className="space-y-2 text-sm text-slate-600">
                     {c.points.map((p) => (
                         <li key={p} className="flex items-start gap-2">
-                            <Check className="h-4 w-4 text-emerald-500 mt-0.5" />
+                            <Check className="h-4 w-4 text-emerald-500 mt-0.5" aria-hidden="true" />
                             <span>{p}</span>
                         </li>
                     ))}
@@ -180,7 +185,7 @@ function CourseCard({ c }: { c: (typeof courses)[number] }) {
                     <div className="text-xl font-bold">₹ {c.priceINR}</div>
                     <Button asChild className="gap-2">
                         <Link href={`/courses/${c.id}`}>
-                            View Details <ArrowRight className="h-4 w-4" />
+                            View Details <ArrowRight className="h-4 w-4" aria-hidden="true" />
                         </Link>
                     </Button>
                 </div>
@@ -204,11 +209,7 @@ export default function HomeClient() {
                 {/* tighter, balanced grid */}
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 lg:py-10 grid grid-cols-1 gap-8 lg:gap-10">
                     {/* text column */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
-                    >
+                    <MotionDiv initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
                         <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
                             Master Java.{" "}
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
@@ -216,36 +217,35 @@ export default function HomeClient() {
                             </span>
                         </h1>
                         <p className="mt-4 text-lg text-slate-600 max-w-xl">
-                            Job-focused lessons with screen-recorded videos, line-by-line code
-                            explanations, quizzes, and interview prep. Learn fast. Learn
-                            right.
+                            Job-focused lessons with screen-recorded videos, line-by-line code explanations, quizzes, and interview
+                            prep. Learn fast. Learn right.
                         </p>
 
                         <div className="mt-6 flex items-center gap-3">
                             <Button size="lg" className="gap-2">
-                                Start Learning <ArrowRight className="h-5 w-5" />
+                                Start Learning <ArrowRight className="h-5 w-5" aria-hidden="true" />
                             </Button>
                             <div className="flex items-center gap-2 text-slate-600">
-                                <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                                <ShieldCheck className="h-5 w-5 text-emerald-600" aria-hidden="true" />
                                 <span>Secure payments</span>
                             </div>
                         </div>
 
                         <div className="mt-6 flex items-center gap-6 text-sm text-slate-500">
                             <div className="flex items-center gap-2">
-                                <Users className="h-4 w-4" /> 5k+ learners
+                                <Users className="h-4 w-4" aria-hidden="true" /> 5k+ learners
                             </div>
                             <div className="flex items-center gap-2">
-                                <Award className="h-4 w-4" /> Job-ready projects
+                                <Award className="h-4 w-4" aria-hidden="true" /> Job-ready projects
                             </div>
                             <div className="flex items-center gap-2">
-                                <Lock className="h-4 w-4" /> DRM-protected video
+                                <Lock className="h-4 w-4" aria-hidden="true" /> DRM-protected video
                             </div>
                         </div>
-                    </motion.div>
+                    </MotionDiv>
 
                     {/* interactive demo column */}
-                    <motion.div
+                    <MotionDiv
                         id="demo"
                         className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 scroll-mt-24"
                         initial={{ opacity: 0, y: 20 }}
@@ -256,23 +256,26 @@ export default function HomeClient() {
                         <Card className="overflow-hidden h-full">
                             <CardHeader className="space-y-1 pb-3">
                                 <CardTitle className="flex items-center gap-2">
-                                    <Play className="h-5 w-5 text-indigo-600" /> Lesson Preview
+                                    <Play className="h-5 w-5 text-indigo-600" aria-hidden="true" /> Lesson Preview
                                 </CardTitle>
-                                <p className="text-sm text-slate-500">
-                                    Screen-recorded walkthroughs with annotations.
-                                </p>
+                                <p className="text-sm text-slate-500">Screen-recorded walkthroughs with annotations.</p>
                             </CardHeader>
                             <CardContent className="p-6 pt-0">
                                 {/* Added px-4 sm:px-6 for horizontal padding */}
                                 <div className="relative h-[340px] bg-slate-900 rounded-xl overflow-hidden px-4 sm:px-6">
                                     <div className="absolute inset-0 grid place-items-center">
-                                        <Button size="icon" className="h-16 w-16 rounded-full shadow-lg">
-                                            <Play className="h-8 w-8" />
+                                        {/* Accessible icon-only button */}
+                                        <Button
+                                            size="icon"
+                                            className="h-16 w-16 rounded-full shadow-lg"
+                                            aria-label="Play preview"
+                                            title="Play preview"
+                                        >
+                                            <Play className="h-8 w-8" aria-hidden="true" />
                                         </Button>
                                     </div>
                                     <div className="absolute bottom-3 left-3 flex items-center gap-2 text-xs text-slate-300">
-                                        <Flame className="h-4 w-4 text-orange-400" /> 12 chapters • 3
-                                        projects
+                                        <Flame className="h-4 w-4 text-orange-400" aria-hidden="true" /> 12 chapters • 3 projects
                                     </div>
                                 </div>
                             </CardContent>
@@ -284,7 +287,7 @@ export default function HomeClient() {
                                 <CardHeader className="pb-3">
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="flex items-center gap-2">
-                                            <Code className="h-5 w-5 text-violet-600" /> Line-by-Line Notes
+                                            <Code className="h-5 w-5 text-violet-600" aria-hidden="true" /> Line-by-Line Notes
                                         </CardTitle>
                                         <div className="hidden sm:block">
                                             <TabsList className="h-9">
@@ -294,50 +297,37 @@ export default function HomeClient() {
                                             </TabsList>
                                         </div>
                                     </div>
-                                    <p className="text-sm text-slate-500">
-                                        Understand what each line does and why.
-                                    </p>
+                                    <p className="text-sm text-slate-500">Understand what each line does and why.</p>
                                 </CardHeader>
                                 <CardContent>
                                     <TabsContent value="code" className="mt-0">
                                         <CodeBlock code={sampleCode} />
                                     </TabsContent>
 
-                                    <TabsContent
-                                        value="notes"
-                                        className="mt-0 text-sm text-slate-600 space-y-2 h-[340px] overflow-auto"
-                                    >
+                                    <TabsContent value="notes" className="mt-0 text-sm text-slate-600 space-y-2 h-[340px] overflow-auto">
                                         <p>
-                                            <b>Two-pointer swap:</b> Start at both ends, swap, and move
-                                            inward—O(n) time, O(1) space.
+                                            <b>Two-pointer swap:</b> Start at both ends, swap, and move inward—O(n) time, O(1) space.
                                         </p>
                                         <p>
-                                            <b>Immutability:</b> Strings are immutable—use a char[] for
-                                            efficient in-place operations.
+                                            <b>Immutability:</b> Strings are immutable—use a char[] for efficient in-place operations.
                                         </p>
                                         <p>
-                                            <b>Interview tip:</b> Be ready to discuss boundary cases like
-                                            empty strings and surrogate pairs.
+                                            <b>Interview tip:</b> Be ready to discuss boundary cases like empty strings and surrogate pairs.
                                         </p>
                                     </TabsContent>
 
-                                    <TabsContent
-                                        value="faq"
-                                        className="mt-0 text-sm text-slate-600 space-y-2 h-[340px] overflow-auto"
-                                    >
+                                    <TabsContent value="faq" className="mt-0 text-sm text-slate-600 space-y-2 h-[340px] overflow-auto">
                                         <p>
-                                            <b>Will videos be downloadable?</b> No. Playback is secured
-                                            and streaming-only for enrolled users.
+                                            <b>Will videos be downloadable?</b> No. Playback is secured and streaming-only for enrolled users.
                                         </p>
                                         <p>
-                                            <b>Do I get lifetime access?</b> Yes—lifetime access with all
-                                            future updates to purchased courses.
+                                            <b>Do I get lifetime access?</b> Yes—lifetime access with all future updates to purchased courses.
                                         </p>
                                     </TabsContent>
                                 </CardContent>
                             </Tabs>
                         </Card>
-                    </motion.div>
+                    </MotionDiv>
                 </div>
             </section>
 
@@ -347,9 +337,7 @@ export default function HomeClient() {
                     <div className="flex items-end justify-between flex-wrap gap-4">
                         <div>
                             <h2 className="text-2xl font-bold">Popular Courses</h2>
-                            <p className="text-slate-600 mt-1">
-                                Hand-crafted paths to go from zero → hireable.
-                            </p>
+                            <p className="text-slate-600 mt-1">Hand-crafted paths to go from zero → hireable.</p>
                         </div>
                         <div>
                             <Button asChild variant="secondary">
@@ -360,7 +348,7 @@ export default function HomeClient() {
 
                     <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
                         {courses.map((c) => (
-                            <motion.div
+                            <MotionDiv
                                 key={c.id}
                                 initial={{ opacity: 0, y: 12 }}
                                 whileInView={{ opacity: 1, y: 0 }}
@@ -369,7 +357,7 @@ export default function HomeClient() {
                                 className="h-full"
                             >
                                 <CourseCard c={c} />
-                            </motion.div>
+                            </MotionDiv>
                         ))}
                     </div>
                 </div>
@@ -382,20 +370,17 @@ export default function HomeClient() {
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
-                                    <ShieldCheck className="h-5 w-5 text-emerald-600" /> Industry-ready
-                                    curriculum
+                                    <ShieldCheck className="h-5 w-5 text-emerald-600" aria-hidden="true" /> Industry-ready curriculum
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="text-slate-600">
-                                We focus on exactly what interviews test: DSA, Java internals, and
-                                real-world Spring projects.
+                                We focus on exactly what interviews test: DSA, Java internals, and real-world Spring projects.
                             </CardContent>
                         </Card>
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
-                                    <Users className="h-5 w-5 text-violet-600" /> Mentorship &
-                                    doubt-clearing
+                                    <Users className="h-5 w-5 text-violet-600" aria-hidden="true" /> Mentorship & doubt-clearing
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="text-slate-600">
@@ -405,13 +390,11 @@ export default function HomeClient() {
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
-                                    <Award className="h-5 w-5 text-indigo-600" /> Fast, structured
-                                    learning
+                                    <Award className="h-5 w-5 text-indigo-600" aria-hidden="true" /> Fast, structured learning
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="text-slate-600">
-                                Short lessons, checkpoints, and recap sheets keep you moving without
-                                overwhelm.
+                                Short lessons, checkpoints, and recap sheets keep you moving without overwhelm.
                             </CardContent>
                         </Card>
                     </div>
@@ -431,9 +414,7 @@ export default function HomeClient() {
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     <StarRow />
-                                    <p className="text-slate-700 text-sm leading-relaxed">
-                                        “{t.quote}”
-                                    </p>
+                                    <p className="text-slate-700 text-sm leading-relaxed">“{t.quote}”</p>
                                 </CardContent>
                             </Card>
                         ))}
@@ -446,8 +427,7 @@ export default function HomeClient() {
                 <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
                     <h2 className="text-3xl font-extrabold">Ready to get job-ready?</h2>
                     <p className="mt-2 text-slate-600">
-                        Enroll in Java today. Lifetime access, updates included. 7-day refund
-                        guarantee.
+                        Enroll in Java today. Lifetime access, updates included. 7-day refund guarantee.
                     </p>
                     <div className="mt-6 flex items-center justify-center gap-3">
                         <Input
@@ -457,12 +437,11 @@ export default function HomeClient() {
                             className="w-64"
                         />
                         <Button className="gap-2">
-                            Enroll Now <ArrowRight className="h-4 w-4" />
+                            Enroll Now <ArrowRight className="h-4 w-4" aria-hidden="true" />
                         </Button>
                     </div>
                     <div className="mt-3 text-xs text-slate-500 flex items-center justify-center gap-2">
-                        <Lock className="h-3.5 w-3.5" /> Payments secured by industry-standard
-                        gateways.
+                        <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Payments secured by industry-standard gateways.
                     </div>
                 </div>
             </section>

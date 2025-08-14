@@ -1,4 +1,4 @@
-//src/app/courses/[slug]/page.tsx
+// src/app/courses/[slug]/page.tsx
 "use client";
 
 import { useEffect, useMemo } from "react";
@@ -105,8 +105,14 @@ export default function CourseDetail() {
                     <CardContent className="pt-0 px-4 pb-4">
                         <div className="relative h-[320px] bg-slate-900 rounded-xl overflow-hidden">
                             <div className="absolute inset-0 grid place-items-center">
-                                <Button size="icon" className="h-16 w-16 rounded-full shadow-lg">
-                                    <Play className="h-8 w-8" />
+                                {/* ✅ Accessible icon-only button */}
+                                <Button
+                                    size="icon"
+                                    className="h-16 w-16 rounded-full shadow-lg"
+                                    aria-label="Play lesson preview"
+                                    title="Play lesson preview"
+                                >
+                                    <Play className="h-8 w-8" aria-hidden="true" />
                                 </Button>
                             </div>
                             <div className="absolute bottom-3 left-3 text-xs text-slate-300">

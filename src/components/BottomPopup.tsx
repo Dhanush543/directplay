@@ -13,7 +13,8 @@ export default function BottomPopup() {
     const [open, setOpen] = useState(false);
 
     useEffect(() => {
-        const dismissed = typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY) === "1";
+        const dismissed =
+            typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY) === "1";
         if (!dismissed) {
             const id = setTimeout(() => {
                 setOpen(true);
@@ -34,7 +35,11 @@ export default function BottomPopup() {
     if (!open) return null;
 
     return (
-        <div role="dialog" aria-live="polite" className={clsx("fixed inset-x-0 bottom-3 z-30", "px-3 sm:px-4")}>
+        <div
+            role="dialog"
+            aria-live="polite"
+            className={clsx("fixed inset-x-0 bottom-3 z-30", "px-3 sm:px-4")}
+        >
             <div
                 className={clsx(
                     "mx-auto w-full max-w-5xl",
@@ -45,7 +50,7 @@ export default function BottomPopup() {
             >
                 <div className="flex items-start sm:items-center gap-3">
                     <span className="mt-0.5 sm:mt-0 rounded-lg bg-indigo-50 text-indigo-700 p-2">
-                        <MessageSquare className="h-5 w-5" />
+                        <MessageSquare className="h-5 w-5" aria-hidden="true" />
                     </span>
                     <div className="text-sm">
                         <div className="font-medium text-slate-900">Questions? Talk to us</div>
@@ -75,16 +80,17 @@ export default function BottomPopup() {
                         }
                     >
                         <Link href="/courses/java-fundamentals">
-                            Buy Java Course <ArrowRight className="h-4 w-4" />
+                            Buy Java Course <ArrowRight className="h-4 w-4" aria-hidden="true" />
                         </Link>
                     </Button>
 
                     <button
-                        aria-label="Dismiss"
+                        aria-label="Dismiss popup"
+                        title="Dismiss"
                         onClick={dismiss}
                         className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50"
                     >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4" aria-hidden="true" />
                     </button>
                 </div>
             </div>
