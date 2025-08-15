@@ -2,13 +2,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Link from "next/link";
-import { Suspense } from "react"; // ← added
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Rocket } from "lucide-react";
 import HeaderSearch from "@/components/HeaderSearch";
 import BottomPopup from "@/components/BottomPopup";
 import { siteUrl } from "@/lib/site";
+
+// NEW: server session for header
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+// NEW: header widgets
+import HeaderUserMenu from "@/components/header/HeaderUserMenu";
+import NotificationsBell from "@/components/header/NotificationsBell";
 
 const plausibleDomain =
   process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN || "directplay.in";
@@ -39,7 +46,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // NEW: read session on the server so header can switch state
+  const session = await getServerSession(authOptions);
+  const user = session?.user;
+
   const webSiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -75,18 +86,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </nav>
 
             <div className="hidden md:flex items-center gap-3">
-              {/* Wrapped in Suspense because HeaderSearch uses useSearchParams */}
               <Suspense fallback={<div className="h-9 w-72" aria-hidden />}>
                 <HeaderSearch />
               </Suspense>
-              <Button asChild variant="ghost" className="hidden lg:inline-flex">
-                <Link href="/auth?view=signin">Sign in</Link>
-              </Button>
-              <Button asChild className="gap-2">
-                <Link href="/auth?view=signup">
-                  Start Learning <Rocket className="h-4 w-4" />
-                </Link>
-              </Button>
+
+              {/* NEW: if logged out → Sign in / Start; if logged in → bell + user menu */}
+              {!user ? (
+                <>
+                  <Button asChild variant="ghost" className="hidden lg:inline-flex">
+                    <Link href="/auth?view=signin">Sign in</Link>
+                  </Button>
+                  <Button asChild className="gap-2">
+                    <Link href="/auth?view=signup">
+                      Start Learning <Rocket className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <NotificationsBell />
+                  <HeaderUserMenu
+                    name={user.name ?? undefined}
+                    email={user.email ?? undefined}
+                    image={user.image ?? undefined}
+                  />
+                </>
+              )}
             </div>
           </div>
         </header>
@@ -113,7 +138,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <ul className="space-y-2 text-slate-600">
                 <li><Link href="/#courses" className="hover:text-slate-900">Courses</Link></li>
                 <li><Link href="/pricing" className="hover:text-slate-900">Pricing</Link></li>
-                {/* Removed Roadmap */}
               </ul>
             </div>
             <div>
