@@ -46,29 +46,26 @@ export const authOptions: NextAuthOptions = {
         verifyRequest: "/auth?view=signin",
     },
     callbacks: {
-        async session({
-            session,
-            user,
-        }: {
-            session: Session;
-            user: NextAuthUser & { id: string };
-        }) {
-            if (session.user) {
-                // Session type is extended in src/types/next-auth.d.ts so this is typed
-                session.user.id = user.id;
-            }
+        async session({ session, user }: { session: any; user: any }) {
+            if (session?.user) (session.user as any).id = user.id;
             return session;
         },
-        async redirect({ url, baseUrl }) {
+        async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
             try {
                 const u = new URL(url, baseUrl);
+
+                // If same-origin and a relative path is provided, use it
                 if (u.origin === baseUrl) {
+                    // Avoid bouncing back to auth or root; send to dashboard instead
+                    if (u.pathname === "/" || u.pathname.startsWith("/auth")) {
+                        return "/dashboard";
+                    }
                     return u.pathname + u.search + u.hash;
                 }
             } catch {
-                // ignore URL parse errors
+                /* ignore parse errors, fall through */
             }
-            // default after successful auth
+            // Default after successful auth
             return "/dashboard";
         },
     },
