@@ -1,14 +1,25 @@
 // src/lib/prisma.ts
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+declare global {
+    // Allow global prisma reuse in dev without TS complaining.
+    // eslint-disable-next-line no-var
+    var prisma: PrismaClient | undefined;
+}
 
 export const prisma =
-    globalForPrisma.prisma ??
+    global.prisma ??
     new PrismaClient({
-        log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+        // Keep your local logs as-is; keep prod quiet.
+        log:
+            process.env.NODE_ENV === "development"
+                ? (["query", "error", "warn"] as const)
+                : (["error"] as const),
     });
 
+// Prevent creating new PrismaClient on hot-reload in dev
 if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = prisma;
+    global.prisma = prisma;
 }
+
+export default prisma;
