@@ -1,9 +1,12 @@
+// src/lib/email.ts
 import { Resend } from "resend";
+import type { CreateEmailOptions } from "resend";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const defaultFrom = process.env.RESEND_FROM; // e.g. 'DirectPlay <send@directplay.in>'
 
 if (!resendApiKey) {
+    // eslint-disable-next-line no-console
     console.warn("RESEND_API_KEY is not set. Email sending will be disabled.");
 }
 
@@ -20,6 +23,8 @@ type SendArgs = {
 
 /**
  * Minimal helper for transactional emails (raw HTML/text).
+ * We intentionally use the html/text branch. Some versions of `resend` types
+ * incorrectly require `react`, so we adapt types safely without `any`.
  */
 export async function sendTransactionalEmail({
     to,
@@ -36,8 +41,12 @@ export async function sendTransactionalEmail({
         headers["List-Unsubscribe"] ||
         "<mailto:unsubscribe@directplay.in>, <https://directplay.in/unsubscribe>";
 
-    // Force the non-React overload; runtime is perfectly valid with html/text.
-    const payload = {
+    // An internal type that matches the non-React usage of the API.
+    type HtmlOnlyEmailOptions = Omit<CreateEmailOptions, "react"> & {
+        react?: undefined;
+    };
+
+    const payload: HtmlOnlyEmailOptions = {
         from,
         to,
         subject,
@@ -47,9 +56,11 @@ export async function sendTransactionalEmail({
             "List-Unsubscribe": listUnsub,
             ...headers,
         },
-        react: undefined,
     };
 
-    const result = await resend.emails.send(payload as any);
+    // Cast once to satisfy the library’s broader union type.
+    const result = await resend.emails.send(
+        payload as unknown as CreateEmailOptions
+    );
     return result;
 }

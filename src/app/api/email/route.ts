@@ -2,6 +2,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendTransactionalEmail } from "@/lib/email";
 
+type EmailRequestBody = {
+    to: string | string[];
+    subject: string;
+    html?: string;
+    text?: string;
+};
+
 export async function POST(req: NextRequest) {
     try {
         if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM) {
@@ -11,8 +18,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const body = await req.json().catch(() => ({}));
-        const { to, subject, html, text } = body ?? {};
+        const body = (await req.json().catch(() => ({}))) as Partial<EmailRequestBody>;
+        const { to, subject, html, text } = body;
 
         if (!to || !subject || (!html && !text)) {
             return NextResponse.json(
@@ -42,11 +49,11 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ id: result?.data?.id ?? null });
-    } catch (err: any) {
+    } catch (err: unknown) {
+        const message =
+            err instanceof Error ? err.message : "Email send failed";
+        // eslint-disable-next-line no-console
         console.error("Email send failed:", err);
-        return NextResponse.json(
-            { error: err?.message ?? "Email send failed" },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
