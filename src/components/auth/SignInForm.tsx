@@ -1,27 +1,47 @@
+// src/components/auth/SignInForm.tsx
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label"; // you said this exists now
+import { Label } from "@/components/ui/label";
 
 export default function SignInForm() {
-    const router = useRouter();
     const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [sent, setSent] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [err, setErr] = useState<string | null>(null);
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!email || !password) return;
+        setErr(null);
         setLoading(true);
 
-        // No backend yet: fake delay + redirect
-        await new Promise((r) => setTimeout(r, 600));
+        const res = await signIn("email", {
+            email,
+            redirect: false,         // we’ll show the “check email” state
+            callbackUrl: "/dashboard",
+        });
+
         setLoading(false);
-        // In the real app you’d set a cookie/token then redirect
-        router.push("/"); // or back to the page user came from
+
+        if (res?.ok) {
+            setSent(true);
+        } else {
+            setErr("Could not send sign-in link. Please try again.");
+        }
+    }
+
+    if (sent) {
+        return (
+            <div className="space-y-3">
+                <h3 className="text-lg font-semibold">Check your email</h3>
+                <p className="text-sm text-slate-600">
+                    We sent a secure sign-in link to <b>{email}</b>. The link expires in 10 minutes.
+                </p>
+            </div>
+        );
     }
 
     return (
@@ -37,24 +57,13 @@ export default function SignInForm() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
+                    aria-invalid={!!err}
                 />
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                    id="password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                />
+                {err && <p className="text-xs text-red-600">{err}</p>}
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Signing in…" : "Sign in"}
+                {loading ? "Sending link…" : "Send sign-in link"}
             </Button>
         </form>
     );

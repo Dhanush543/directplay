@@ -5,6 +5,7 @@ import SignUpForm from "@/components/auth/SignUpForm";
 
 export const dynamic = "force-static";
 export const revalidate = 86400; // 24h
+
 export const metadata: Metadata = {
     title: "Create account – DirectPlay",
     description: "Sign up to start learning.",
