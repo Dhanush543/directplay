@@ -1,25 +1,27 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // App/runtime can keep using the Prisma Data Proxy URL
+  url       = env("DATABASE_URL")
+  // Migrations will use the direct Postgres URL below
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?  @unique
   emailVerified DateTime?
   image         String?
 
-  accounts Account[]
-  sessions Session[]
+  accounts      Account[]
+  sessions      Session[]
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([email])
 }

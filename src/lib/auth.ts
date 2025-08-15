@@ -1,12 +1,13 @@
 // src/lib/auth.ts
-import type { NextAuthOptions, Session, User as NextAuthUser } from "next-auth";
+import type { NextAuthOptions, Session, User } from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import EmailProvider from "next-auth/providers/email";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY || "");
-const defaultFrom = process.env.RESEND_FROM || "DirectPlay <send@directplay.in>";
+const defaultFrom =
+    process.env.RESEND_FROM || "DirectPlay <send@directplay.in>";
 
 function loginEmailHTML(url: string) {
     return `
@@ -17,6 +18,13 @@ function loginEmailHTML(url: string) {
     <p style="color:#6b7280;font-size:12px">If the button doesn’t work, copy and paste this link into your browser:<br/>${url}</p>
   </div>`;
 }
+
+type AppSessionUser = {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+};
 
 export const authOptions: NextAuthOptions = {
     adapter: PrismaAdapter(prisma),
@@ -46,26 +54,40 @@ export const authOptions: NextAuthOptions = {
         verifyRequest: "/auth?view=signin",
     },
     callbacks: {
-        async session({ session, user }: { session: any; user: any }) {
-            if (session?.user) (session.user as any).id = user.id;
+        async session(
+            {
+                session,
+                user,
+            }: {
+                session: Session;
+                user: User;
+            },
+        ) {
+            // Our session typing is augmented in src/types/next-auth.d.ts
+            if (session.user) {
+                (session.user as AppSessionUser).id = String(user.id);
+            }
             return session;
         },
-        async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
+        async redirect({
+            url,
+            baseUrl,
+        }: {
+            url: string;
+            baseUrl: string;
+        }) {
             try {
                 const u = new URL(url, baseUrl);
-
-                // If same-origin and a relative path is provided, use it
                 if (u.origin === baseUrl) {
-                    // Avoid bouncing back to auth or root; send to dashboard instead
+                    // Avoid bouncing back to auth or root; send to dashboard
                     if (u.pathname === "/" || u.pathname.startsWith("/auth")) {
                         return "/dashboard";
                     }
                     return u.pathname + u.search + u.hash;
                 }
             } catch {
-                /* ignore parse errors, fall through */
+                // fall through
             }
-            // Default after successful auth
             return "/dashboard";
         },
     },

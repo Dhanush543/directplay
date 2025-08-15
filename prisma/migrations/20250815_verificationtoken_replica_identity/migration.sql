@@ -1,1 +1,1 @@
-ALTER TABLE "VerificationToken" REPLICA IDENTITY FULL;
+ALTER TABLE "public"."VerificationToken" REPLICA IDENTITY FULL;
