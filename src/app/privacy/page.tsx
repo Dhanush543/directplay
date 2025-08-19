@@ -5,6 +5,7 @@ import { legalContent } from "@/lib/siteContent";
 
 export const dynamic = "force-static";
 export const revalidate = 86400; // 24h
+
 export const metadata: Metadata = {
     title: "Privacy Policy – DirectPlay",
     description: "How DirectPlay collects and uses data.",

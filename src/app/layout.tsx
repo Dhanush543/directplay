@@ -10,12 +10,13 @@ import HeaderSearch from "@/components/HeaderSearch";
 import BottomPopup from "@/components/BottomPopup";
 import { siteUrl } from "@/lib/site";
 
-// NEW: server session for header
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-// NEW: header widgets
+import type { Session } from "next-auth";
+import { safeGetServerSession } from "@/lib/auth";
 import HeaderUserMenu from "@/components/header/HeaderUserMenu";
 import NotificationsBell from "@/components/header/NotificationsBell";
+import prisma from "@/lib/prisma";
+
+export const dynamic = "force-dynamic"; // ensure header reflects auth state
 
 const plausibleDomain =
   process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN || "directplay.in";
@@ -47,9 +48,16 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // NEW: read session on the server so header can switch state
-  const session = await getServerSession(authOptions);
-  const user = session?.user;
+  const session = await safeGetServerSession();
+
+  const user = session?.user as (Session["user"] & { id?: string }) | undefined;
+  const userId: string | undefined = user?.id ? String(user.id) : undefined;
+
+  const unreadCount = userId
+    ? await prisma.notification.count({
+      where: { userId, read: false },
+    })
+    : 0;
 
   const webSiteJsonLd = {
     "@context": "https://schema.org",
@@ -69,28 +77,36 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Fixed Global Nav */}
         <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-white/60 bg-white border-b border-slate-200">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-            <Link href="/" className="flex items-center gap-3">
+            <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 grid place-items-center text-white font-bold">
                 DP
               </div>
               <span className="font-semibold">DirectPlay</span>
             </Link>
 
-            <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
-              <Link href="/" className="hover:text-slate-900">Home</Link>
-              <Link href="/#courses" className="hover:text-slate-900">Courses</Link>
-              <Link href="/#demo" className="hover:text-slate-900">Live Demo</Link>
-              <Link href="/#outcomes" className="hover:text-slate-900">Outcomes</Link>
-              <Link href="/pricing" className="hover:text-slate-900">Pricing</Link>
-              <Link href="/faq" className="hover:text-slate-900">FAQ</Link>
-            </nav>
+            {/* Center nav switches by auth state */}
+            {!user ? (
+              <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
+                <Link href="/" className="hover:text-slate-900">Home</Link>
+                <Link href="/#courses" className="hover:text-slate-900">Courses</Link>
+                <Link href="/#demo" className="hover:text-slate-900">Live Demo</Link>
+                <Link href="/#outcomes" className="hover:text-slate-900">Outcomes</Link>
+                <Link href="/pricing" className="hover:text-slate-900">Pricing</Link>
+                <Link href="/faq" className="hover:text-slate-900">FAQ</Link>
+              </nav>
+            ) : (
+              <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
+                <Link href="/dashboard" className="hover:text-slate-900">Dashboard</Link>
+                <Link href="/dashboard/courses" className="hover:text-slate-900">My Courses</Link>
+                <Link href="/courses" className="hover:text-slate-900">Explore</Link>
+              </nav>
+            )}
 
             <div className="hidden md:flex items-center gap-3">
               <Suspense fallback={<div className="h-9 w-72" aria-hidden />}>
                 <HeaderSearch />
               </Suspense>
 
-              {/* NEW: if logged out → Sign in / Start; if logged in → bell + user menu */}
               {!user ? (
                 <>
                   <Button asChild variant="ghost" className="hidden lg:inline-flex">
@@ -104,7 +120,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </>
               ) : (
                 <>
-                  <NotificationsBell />
+                  <NotificationsBell count={unreadCount} />
                   <HeaderUserMenu
                     name={user.name ?? undefined}
                     email={user.email ?? undefined}
@@ -125,7 +141,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer className="py-10 text-sm">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 grid md:grid-cols-4 gap-8">
             <div>
-              <Link href="/" className="flex items-center gap-3">
+              <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 grid place-items-center text-white text-xs font-bold">
                   DP
                 </div>
@@ -136,7 +152,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div>
               <div className="font-semibold mb-2">Product</div>
               <ul className="space-y-2 text-slate-600">
-                <li><Link href="/#courses" className="hover:text-slate-900">Courses</Link></li>
+                <li><Link href="/courses" className="hover:text-slate-900">Courses</Link></li>
                 <li><Link href="/pricing" className="hover:text-slate-900">Pricing</Link></li>
               </ul>
             </div>

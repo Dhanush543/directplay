@@ -3,9 +3,6 @@
 
 import { useSyncExternalStore } from "react";
 
-// Single source of truth for the unread badge in the header.
-// Persisted in localStorage and exposed via useSyncExternalStore.
-
 const UNREAD_KEY = "dp_unread_count_v1";
 
 // ----- persistence helpers -----
@@ -27,7 +24,6 @@ const listeners = new Set<() => void>();
 function subscribe(listener: () => void) {
     listeners.add(listener);
 
-    // Keep multiple tabs in sync
     function onStorage(e: StorageEvent) {
         if (e.key === UNREAD_KEY) listener();
     }
@@ -47,8 +43,8 @@ function getServerSnapshot() {
 }
 
 function emit() {
-    // Schedule after the current render tick to avoid React warnings.
-    queueMicrotask(() => {
+    const q = typeof queueMicrotask === "function" ? queueMicrotask : (fn: () => void) => Promise.resolve().then(fn);
+    q(() => {
         for (const l of Array.from(listeners)) l();
     });
 }

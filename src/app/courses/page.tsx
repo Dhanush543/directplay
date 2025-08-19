@@ -4,9 +4,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { siteUrl } from "@/lib/site";
 import CoursesClient from "./CoursesClient";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-static";
-export const revalidate = 86400; // 24h as a literal
+export const revalidate = 86400; // 24h
 
 export const metadata: Metadata = {
     title: "Courses – DirectPlay",
@@ -28,7 +30,10 @@ export const metadata: Metadata = {
     },
 };
 
-export default function CoursesPage() {
+export default async function CoursesPage() {
+    const session = await getServerSession(authOptions);
+    const homeHref = session?.user ? "/dashboard" : "/";
+
     return (
         <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
             <header className="mb-6">
@@ -55,7 +60,7 @@ export default function CoursesPage() {
 
             <div className="mt-10">
                 <Link
-                    href="/"
+                    href={homeHref}
                     className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2.5 text-slate-900 ring-1 ring-slate-200 hover:ring-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
                 >
                     ← Back home

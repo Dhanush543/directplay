@@ -1,11 +1,19 @@
 // src/components/header/NotificationsBell.tsx
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { useUnreadCount } from "@/lib/notifications-store";
+import { useUnreadCount, setUnreadCount } from "@/lib/notifications-store";
 
-export default function NotificationsBell() {
-    const count = useUnreadCount();
+/** Shows bell with unread badge. */
+export default function NotificationsBell({ count }: { count?: number }) {
+    const storeCount = useUnreadCount();
+    const visible = typeof count === "number" ? count : storeCount;
+
+    useEffect(() => {
+        if (typeof count === "number") setUnreadCount(count);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [count]);
 
     return (
         <Link
@@ -19,9 +27,9 @@ export default function NotificationsBell() {
                     d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm6-6v-3a6 6 0 1 0-12 0v3l-2 2v1h16v-1l-2-2Z"
                 />
             </svg>
-            {count > 0 && (
+            {visible > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-fuchsia-600 text-white text-[10px] grid place-items-center">
-                    {count > 9 ? "9+" : count}
+                    {visible > 9 ? "9+" : visible}
                 </span>
             )}
         </Link>

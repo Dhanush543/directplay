@@ -16,22 +16,33 @@ export default function HeaderUserMenu({ name, email, image }: Props) {
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        function onClick(e: MouseEvent) {
+        function onDocPointerDown(e: MouseEvent | PointerEvent) {
             if (!ref.current?.contains(e.target as Node)) setOpen(false);
         }
-        window.addEventListener("click", onClick);
-        return () => window.removeEventListener("click", onClick);
+        function onDocKey(e: KeyboardEvent) {
+            if (e.key === "Escape") setOpen(false);
+        }
+        // pointerdown is a bit snappier than click for closing menus
+        window.addEventListener("pointerdown", onDocPointerDown);
+        window.addEventListener("keydown", onDocKey);
+        return () => {
+            window.removeEventListener("pointerdown", onDocPointerDown);
+            window.removeEventListener("keydown", onDocKey);
+        };
     }, []);
 
     const initials =
-        name?.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase() ||
-        (email ? email[0].toUpperCase() : "U");
+        (name?.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase() ??
+            "") || (email ? email[0].toUpperCase() : "U");
 
     return (
         <div ref={ref} className="relative">
             <button
-                onClick={() => setOpen(o => !o)}
+                onClick={() => setOpen((o) => !o)}
                 className="flex items-center gap-2 rounded-full ring-1 ring-slate-200 bg-white pl-1 pr-3 py-1.5 hover:bg-slate-50"
+                aria-haspopup="menu"
+                aria-expanded={open}
+                aria-label="Account menu"
             >
                 <span className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white grid place-items-center text-xs font-semibold overflow-hidden">
                     {image ? (
@@ -45,7 +56,11 @@ export default function HeaderUserMenu({ name, email, image }: Props) {
             </button>
 
             {open && (
-                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white shadow-lg ring-1 ring-slate-200 p-1">
+                <div
+                    className="absolute right-0 mt-2 w-56 rounded-xl bg-white shadow-lg ring-1 ring-slate-200 p-1"
+                    role="menu"
+                    aria-label="Account"
+                >
                     <div className="px-3 py-2">
                         <div className="text-sm font-medium truncate">{name || "Your account"}</div>
                         <div className="text-xs text-slate-500 truncate">{email}</div>
@@ -61,6 +76,7 @@ export default function HeaderUserMenu({ name, email, image }: Props) {
                     <button
                         className="w-full text-left rounded-lg px-3 py-2 text-sm hover:bg-slate-50"
                         onClick={() => signOut({ callbackUrl: "/" })}
+                        role="menuitem"
                     >
                         Sign out
                     </button>
@@ -72,10 +88,7 @@ export default function HeaderUserMenu({ name, email, image }: Props) {
 
 function MenuLink({ href, children }: { href: string; children: React.ReactNode }) {
     return (
-        <Link
-            href={href}
-            className="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"
-        >
+        <Link href={href} className="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50" role="menuitem">
             {children}
         </Link>
     );

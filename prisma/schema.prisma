@@ -1,27 +1,64 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  // App/runtime can keep using the Prisma Data Proxy URL
-  url       = env("DATABASE_URL")
-  // Migrations will use the direct Postgres URL below
-  directUrl = env("DIRECT_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
+// ---------------- Enums ----------------
+
+enum UserRole {
+  user
+  admin
+}
+
+enum NotificationType {
+  auth
+  email
+  system
+}
+
+// ---------------- Auth (existing + admin plan) ----------------
+
 model User {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String?
-  email         String?  @unique
+  email         String?   @unique
   emailVerified DateTime?
   image         String?
 
-  accounts      Account[]
-  sessions      Session[]
+  // NEW (admin plan)
+  role    UserRole @default(user)
+  /**
+   * Legacy flag kept for backward compatibility. Prefer `role == admin`.
+   * You can remove this after migrating all checks to `role`.
+   */
+  isAdmin Boolean  @default(false)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  accounts Account[]
+  sessions Session[]
+
+  // learning relations
+  enrollments      Enrollment[]
+  lessonProgresses LessonProgress[]
+  streakLogs       StreakLog[]
+  notifications    Notification[]
+  lessonNotes      LessonNote[]
+
+  // NEW back-relations required by Prisma
+  media     Media[] // ↔ Media.user
+  auditLogs AuditLog[] // ↔ AuditLog.actor
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  // soft delete (admin plan)
+  deletedAt DateTime?
 
   @@index([email])
 }
@@ -69,4 +106,184 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ---------------- Learning data ----------------
+
+model Course {
+  id    String @id @default(cuid())
+  title String
+  slug  String @unique
+
+  /// Legacy hint. Prefer counting from Lesson for UI.
+  totalLessons Int @default(0)
+
+  // display/marketing fields
+  description   String?
+  level         String? // "Beginner" | "Intermediate" | "Advanced"
+  durationHours Int?
+  priceINR      Int?
+  points        Json?
+  ogImage       String?
+  previewPoster String?
+  published     Boolean @default(true)
+  comingSoon    Boolean @default(false)
+
+  lessons     Lesson[]
+  enrollments Enrollment[]
+  progress    LessonProgress[]
+  lessonNotes LessonNote[]
+  media       Media[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  // soft delete (admin plan)
+  deletedAt DateTime?
+}
+
+model Lesson {
+  id        String    @id @default(cuid())
+  courseId  String
+  index     Int
+  title     String
+  videoUrl  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  // soft delete (admin plan)
+  deletedAt DateTime?
+
+  course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress LessonProgress[]
+  notes    LessonNote[]
+  media    Media[]
+
+  @@unique([courseId, index])
+  @@index([courseId, index])
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  startedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model LessonProgress {
+  id              String   @id @default(cuid())
+  userId          String
+  courseId        String
+  lessonId        String
+  completed       Boolean  @default(false)
+  durationSeconds Int      @default(0)
+  updatedAt       DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId, lessonId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([lessonId])
+}
+
+model StreakLog {
+  id     String   @id @default(cuid())
+  userId String
+  day    DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day])
+  @@index([userId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  meta      String?
+  type      NotificationType @default(system)
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  // optional soft delete for moderation
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+// ---------------- Per-lesson notes ----------------
+
+model LessonNote {
+  id        String    @id @default(cuid())
+  userId    String
+  courseId  String
+  lessonId  String
+  content   String    @db.Text
+  updatedAt DateTime  @updatedAt
+  // soft delete (admin plan)
+  deletedAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId, lessonId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([lessonId])
+}
+
+// ---------------- Media Library (admin plan) ----------------
+
+model Media {
+  id        String  @id @default(cuid())
+  kind      String // "image" | "video" | "other"
+  key       String // object key in storage (S3/R2/GCS)
+  url       String? // optional public CDN URL
+  width     Int?
+  height    Int?
+  sizeBytes Int?
+  mime      String?
+
+  courseId String?
+  lessonId String?
+  userId   String?
+
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([courseId])
+  @@index([lessonId])
+  @@index([userId])
+}
+
+// ---------------- Audit Log (admin plan) ----------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String // e.g. "course.update"
+  entity    String // e.g. "course:abc123"
+  summary   String?
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
