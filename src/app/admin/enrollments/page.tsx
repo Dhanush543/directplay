@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { requireAdminOrNotFound } from "@/lib/auth";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import type { MouseEvent } from "react";
+import ConfirmButton from "@/components/admin/ConfirmButton";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +35,8 @@ export async function createEnrollmentAction(formData: FormData) {
         await prisma.enrollment.create({
             data: { userId, courseId },
         });
-    } catch (e: unknown) {
-        // unique constraint (userId, courseId) → ignore with friendly message
-        // We don’t throw to keep UX simple.
+    } catch {
+        // (userId, courseId) unique → ignore for UX simplicity
     }
 
     revalidatePath("/admin/enrollments");
@@ -88,23 +87,24 @@ type Row = {
 export default async function AdminEnrollments({
     searchParams,
 }: {
-    searchParams?: SearchParams;
+    // Next 15: treat as Promise and await it
+    searchParams: Promise<SearchParams>;
 }) {
     await requireAdminOrNotFound();
 
-    const params: SearchParams = searchParams ?? {};
-    const q: string = params.q ?? "";
-    const userIdFilter: string | null = params.user ?? null;
-    const courseIdFilter: string | null = params.course ?? null;
+    const sp = (await searchParams) ?? {};
+    const q: string = sp.q ?? "";
+    const userIdFilter: string | null = sp.user ?? null;
+    const courseIdFilter: string | null = sp.course ?? null;
 
     const currentPage: number = Math.max(
         1,
-        Number.isFinite(Number(params.page)) ? Number(params.page) : 1
+        Number.isFinite(Number(sp.page)) ? Number(sp.page) : 1
     );
     const take = 20;
     const skip = (currentPage - 1) * take;
 
-    // Build where clause (use Prisma input type directly to avoid 'unknown' issues)
+    // Build where clause
     const where = {
         ...(userIdFilter ? { userId: userIdFilter } : {}),
         ...(courseIdFilter ? { courseId: courseIdFilter } : {}),
@@ -266,29 +266,24 @@ export default async function AdminEnrollments({
                                         <form action={resetProgressAction}>
                                             <input type="hidden" name="userId" value={r.user.id} />
                                             <input type="hidden" name="courseId" value={r.course.id} />
-                                            <button
-                                                type="submit"
+                                            <ConfirmButton
+                                                formSubmit
+                                                title="Reset this user’s progress for the course?"
                                                 className="rounded-md border px-2 py-1 text-xs hover:bg-slate-50"
-                                                onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                                                    if (!confirm("Reset this user’s progress for the course?"))
-                                                        e.preventDefault();
-                                                }}
                                             >
                                                 Reset progress
-                                            </button>
+                                            </ConfirmButton>
                                         </form>
 
                                         <form action={deleteEnrollmentAction}>
                                             <input type="hidden" name="id" value={r.id} />
-                                            <button
-                                                type="submit"
+                                            <ConfirmButton
+                                                formSubmit
+                                                title="Remove this enrollment?"
                                                 className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
-                                                onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                                                    if (!confirm("Remove this enrollment?")) e.preventDefault();
-                                                }}
                                             >
                                                 Remove
-                                            </button>
+                                            </ConfirmButton>
                                         </form>
                                     </div>
                                 </td>

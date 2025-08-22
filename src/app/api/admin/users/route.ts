@@ -1,5 +1,3 @@
-
-
 // src/app/api/admin/users/route.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";

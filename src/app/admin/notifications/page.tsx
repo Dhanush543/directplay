@@ -1,86 +1,11 @@
 // src/app/admin/notifications/page.tsx
 import prisma from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
 import { requireAdminOrNotFound } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
-import Link from "next/link";
-import type { MouseEvent } from "react";
+import { createNotificationAction } from "./actions";
+import NotificationActions from "@/components/admin/NotificationActions";
 
 export const dynamic = "force-dynamic";
 
-/* -------------------------- server actions -------------------------- */
-
-export async function createNotificationAction(formData: FormData) {
-    "use server";
-    await requireAdminOrNotFound();
-
-    const userIdRaw = String(formData.get("userId") ?? "").trim();
-    const emailRaw = String(formData.get("email") ?? "").trim();
-    const title = String(formData.get("title") ?? "").trim();
-    const type = String(formData.get("type") ?? "system").trim() as
-        | "system"
-        | "email"
-        | "auth";
-    const meta = String(formData.get("meta") ?? "").trim() || null;
-
-    if (!title) {
-        throw new Error("Title is required.");
-    }
-
-    // Resolve user by id or email (email wins if both given)
-    let userId = userIdRaw || "";
-    if (emailRaw) {
-        const user = await prisma.user.findFirst({
-            where: { email: emailRaw },
-            select: { id: true },
-        });
-        if (!user) {
-            throw new Error("No user found with that email.");
-        }
-        userId = user.id;
-    }
-    if (!userId) {
-        throw new Error("Pick a user (by ID or Email).");
-    }
-
-    await prisma.notification.create({
-        data: {
-            userId,
-            title,
-            type,
-            meta,
-        },
-    });
-
-    revalidatePath("/admin/notifications");
-}
-
-export async function deleteNotificationAction(formData: FormData) {
-    "use server";
-    await requireAdminOrNotFound();
-
-    const id = String(formData.get("id") ?? "");
-    if (!id) throw new Error("Notification id is required.");
-    await prisma.notification.delete({ where: { id } });
-
-    revalidatePath("/admin/notifications");
-}
-
-export async function toggleReadAction(formData: FormData) {
-    "use server";
-    await requireAdminOrNotFound();
-
-    const id = String(formData.get("id") ?? "");
-    const nextRead = String(formData.get("nextRead") ?? "false") === "true";
-    if (!id) throw new Error("Notification id is required.");
-
-    await prisma.notification.update({
-        where: { id },
-        data: { read: nextRead },
-    });
-
-    revalidatePath("/admin/notifications");
-}
 
 /* ------------------------------ types ------------------------------ */
 
@@ -108,11 +33,12 @@ type SimpleUser = { id: string; name: string | null; email: string | null };
 export default async function AdminNotifications({
     searchParams,
 }: {
-    searchParams?: SearchParams;
+    // NOTE: await searchParams per Next.js requirement
+    searchParams: Promise<SearchParams>;
 }) {
     await requireAdminOrNotFound();
 
-    const params: SearchParams = searchParams ?? {};
+    const params = (await searchParams) ?? {};
     const q = params.q ?? "";
     const userIdFilter = params.user ?? "";
     const typeFilter = (params.type ?? "") as SearchParams["type"];
@@ -124,8 +50,7 @@ export default async function AdminNotifications({
     const take = 20;
     const skip = (currentPage - 1) * take;
 
-    // We avoid nested relation filters for maximum Prisma version compatibility:
-    // For q, first resolve matching user IDs by name/email, then OR against title/meta/userId
+    // Resolve matching users for q (name/email) then OR against title/meta/userId
     const matchingUserIds: string[] =
         q
             ? (await prisma.user.findMany({
@@ -147,13 +72,15 @@ export default async function AdminNotifications({
                 OR: [
                     { title: { contains: q } },
                     { meta: { contains: q } },
-                    ...(matchingUserIds.length > 0 ? [{ userId: { in: matchingUserIds } as any }] : []),
+                    ...(matchingUserIds.length > 0
+                        ? [{ userId: { in: matchingUserIds } as any }]
+                        : []),
                 ],
             }
             : {}),
     } as any;
 
-    const [rows, total, users] = await Promise.all([
+    const [rows, total, users] = (await Promise.all([
         prisma.notification.findMany({
             where,
             orderBy: { createdAt: "desc" },
@@ -169,7 +96,7 @@ export default async function AdminNotifications({
             take: 200,
             select: { id: true, name: true, email: true },
         }),
-    ]) as [Row[], number, SimpleUser[]];
+    ])) as [Row[], number, SimpleUser[]];
 
     const pages = Math.max(1, Math.ceil(total / take));
 
@@ -306,7 +233,7 @@ export default async function AdminNotifications({
                                 <td className="px-3 py-2">
                                     <div className="font-medium">{r.title}</div>
                                     {r.meta && (
-                                        <div className="mt-1 text-xs text-slate-500 break-all">
+                                        <div className="mt-1 break-all text-xs text-slate-500">
                                             {r.meta}
                                         </div>
                                     )}
@@ -334,27 +261,7 @@ export default async function AdminNotifications({
                                     {new Date(r.createdAt).toLocaleString()}
                                 </td>
                                 <td className="px-3 py-2">
-                                    <div className="flex items-center gap-2">
-                                        <form action={toggleReadAction} className="inline">
-                                            <input type="hidden" name="id" value={r.id} />
-                                            <input type="hidden" name="nextRead" value={(!r.read).toString()} />
-                                            <button className="rounded-md border px-2 py-1 text-xs hover:bg-slate-50">
-                                                Mark {r.read ? "unread" : "read"}
-                                            </button>
-                                        </form>
-
-                                        <form action={deleteNotificationAction} className="inline">
-                                            <input type="hidden" name="id" value={r.id} />
-                                            <button
-                                                className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
-                                                onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                                                    if (!confirm("Delete this notification?")) e.preventDefault();
-                                                }}
-                                            >
-                                                Delete
-                                            </button>
-                                        </form>
-                                    </div>
+                                    <NotificationActions id={r.id} read={r.read} />
                                 </td>
                             </tr>
                         ))}
@@ -381,7 +288,8 @@ export default async function AdminNotifications({
                                 className="rounded-md border border-slate-200 px-2 py-1 hover:bg-slate-50"
                                 href={`?q=${encodeURIComponent(q)}&user=${encodeURIComponent(
                                     userIdFilter
-                                )}&type=${encodeURIComponent(typeFilter ?? "")}&page=${currentPage - 1}`}
+                                )}&type=${encodeURIComponent(typeFilter ?? "")}&page=${currentPage - 1
+                                    }`}
                             >
                                 ← Prev
                             </a>
@@ -391,7 +299,8 @@ export default async function AdminNotifications({
                                 className="rounded-md border border-slate-200 px-2 py-1 hover:bg-slate-50"
                                 href={`?q=${encodeURIComponent(q)}&user=${encodeURIComponent(
                                     userIdFilter
-                                )}&type=${encodeURIComponent(typeFilter ?? "")}&page=${currentPage + 1}`}
+                                )}&type=${encodeURIComponent(typeFilter ?? "")}&page=${currentPage + 1
+                                    }`}
                             >
                                 Next →
                             </a>

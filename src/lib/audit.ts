@@ -1,10 +1,12 @@
-import { prisma } from '@/lib/prisma';
+// src/lib/audit.ts
+import prisma from "@/lib/prisma";
 
 export type AuditLogInput = {
     action: string;
     entity: string;
-    summary: string;
+    summary?: string | null;
     payload?: unknown;
+    /** caller passes the current user id; we will store it as actorId */
     userId?: string | null;
 };
 
@@ -19,23 +21,25 @@ export async function writeAuditLog({
         const data: {
             action: string;
             entity: string;
-            summary: string;
-            userId: string | null;
-            payload?: any;
+            summary?: string | null;
+            actorId: string | null;
+            payload?: unknown;
         } = {
             action,
             entity,
-            summary,
-            userId: userId ?? null,
+            summary: summary ?? null,
+            actorId: userId ?? null, // 👈 correct column
         };
 
-        // Only set payload if provided; pass through raw object (do not stringify)
         if (typeof payload !== "undefined") {
-            data.payload = payload as any;
+            data.payload = payload;
         }
 
         await prisma.auditLog.create({ data });
     } catch (err) {
-        console.error("Failed to write audit log", err);
+        // Keep this quiet in prod; surface in dev
+        if (process.env.NODE_ENV !== "production") {
+            console.error("[audit] Failed to write audit log", err);
+        }
     }
 }

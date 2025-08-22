@@ -53,11 +53,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const user = session?.user as (Session["user"] & { id?: string }) | undefined;
   const userId: string | undefined = user?.id ? String(user.id) : undefined;
 
-  const unreadCount = userId
-    ? await prisma.notification.count({
-      where: { userId, read: false },
-    })
-    : 0;
+  let unreadCount = 0;
+  if (userId) {
+    try {
+      unreadCount = await prisma.notification.count({
+        where: { userId, read: false },
+      });
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[layout] failed to count notifications", err);
+      }
+      unreadCount = 0;
+    }
+  }
 
   const webSiteJsonLd = {
     "@context": "https://schema.org",
@@ -72,7 +80,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   };
 
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full" suppressHydrationWarning>
       <body className="min-h-screen h-full bg-white text-slate-900 flex flex-col">
         {/* Fixed Global Nav */}
         <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-white/60 bg-white border-b border-slate-200">
@@ -199,6 +207,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             )}`}
             alt=""
             referrerPolicy="no-referrer-when-downgrade"
+            loading="lazy"
+            aria-hidden
           />
         </noscript>
       </body>

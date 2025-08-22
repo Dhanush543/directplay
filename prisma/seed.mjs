@@ -1,6 +1,9 @@
 // prisma/seed.mjs
 import { PrismaClient } from '@prisma/client';
 
+// Admin bootstrap list (comma-separated)
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+
 const prisma = new PrismaClient();
 const EMAIL = process.env.SEED_USER_EMAIL || 'dhanushpettugani@gmail.com';
 
@@ -11,10 +14,27 @@ function startOfDay(d) {
 }
 
 async function getOrCreateUserByEmail(email) {
-    const existing = await prisma.user.findFirst({ where: { email } });
-    if (existing) return existing;
+    const lower = String(email).toLowerCase();
+    const shouldBeAdmin = ADMIN_EMAILS.includes(lower);
+
+    // Prefer selecting minimal fields needed
+    const existing = await prisma.user.findFirst({ where: { email: lower }, select: { id: true, email: true, role: true, isAdmin: true, name: true } });
+    if (existing) {
+        // If role is missing or differs from desired bootstrap role, align it
+        const targetRole = shouldBeAdmin ? 'admin' : (existing.role ?? 'user');
+        if (existing.role !== targetRole) {
+            return prisma.user.update({ where: { id: existing.id }, data: { role: targetRole, isAdmin: shouldBeAdmin } });
+        }
+        return existing;
+    }
+
     return prisma.user.create({
-        data: { email, name: email.split('@')[0] },
+        data: {
+            email: lower,
+            name: lower.split('@')[0],
+            role: shouldBeAdmin ? 'admin' : 'user',
+            isAdmin: shouldBeAdmin,
+        },
     });
 }
 
@@ -46,7 +66,6 @@ async function upsertCourseWithLessons({
             previewPoster,
             published,
             comingSoon,
-            totalLessons, // keep legacy field roughly in sync
         },
         create: {
             slug,
@@ -60,7 +79,6 @@ async function upsertCourseWithLessons({
             previewPoster,
             published,
             comingSoon,
-            totalLessons,
         },
     });
 

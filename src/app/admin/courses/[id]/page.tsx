@@ -11,6 +11,9 @@ import {
     moveLessonAction,
 } from "./actions";
 import { requireAdminOrNotFound } from "@/lib/auth";
+import { cookies } from "next/headers";
+import Script from "next/script";
+import StreamCostEstimator from "@/components/admin/StreamCostEstimator";
 
 export const dynamic = "force-dynamic";
 
@@ -43,14 +46,41 @@ async function getCourseByIdOrSlug(idOrSlug: string) {
     });
 }
 
+type FlashPayload = { type: "success" | "error" | "info"; message: string };
+
+async function readFlash(): Promise<FlashPayload | null> {
+    try {
+        const jar = await cookies(); // <-- await
+        const raw = jar.get("flash")?.value;
+        if (!raw) return null;
+
+        // Clear it so it shows only once
+        try {
+            await jar.set("flash", "", { expires: new Date(0), path: "/" });
+        } catch {
+            /* ignore */
+        }
+
+        try {
+            return JSON.parse(raw) as FlashPayload;
+        } catch {
+            return { type: "info", message: String(raw) };
+        }
+    } catch {
+        return null;
+    }
+}
+
 export default async function AdminCourseEditorPage({
     params,
 }: {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }) {
     await requireAdminOrNotFound();
+    const flash = await readFlash();
 
-    const course = await getCourseByIdOrSlug(params.id);
+    const { id } = await params;
+    const course = await getCourseByIdOrSlug(id);
     if (!course) notFound();
 
     const pointsText = Array.isArray(course.points)
@@ -75,7 +105,7 @@ export default async function AdminCourseEditorPage({
                     <h2 className="font-semibold">Course details</h2>
                     <form action={updateCourseAction} className="mt-4 space-y-4">
                         {/* supply identity for the action */}
-                        <input type="hidden" name="courseId" value={course.id} />
+                        <input type="hidden" name="id" value={course.id} />
                         <input type="hidden" name="currentSlug" value={course.slug} />
 
                         <div className="grid sm:grid-cols-2 gap-4">
@@ -137,7 +167,7 @@ export default async function AdminCourseEditorPage({
                                 <input
                                     type="number"
                                     min={0}
-                                    step={100}
+                                    step={1}
                                     name="priceINR"
                                     defaultValue={course.priceINR ?? ""}
                                     className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
@@ -263,7 +293,46 @@ export default async function AdminCourseEditorPage({
                     <h2 className="font-semibold">Lessons</h2>
                     <span className="text-sm text-slate-500">Total: {course.lessons.length}</span>
                 </div>
+                {flash ? (
+                    <>
+                        <div
+                            id="flash-banner"
+                            className={`mt-3 mb-3 rounded-lg border px-3 py-2 text-sm ${flash.type === "success"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                : flash.type === "error"
+                                    ? "border-red-200 bg-red-50 text-red-800"
+                                    : "border-slate-200 bg-slate-50 text-slate-700"
+                                }`}
+                            role="status"
+                            aria-live="polite"
+                        >
+                            {flash.message}
+                        </div>
+                        <Script id="flash-autohide" strategy="afterInteractive">
+                            {`
+      (function () {
+        var el = document.getElementById('flash-banner');
+        if (!el) return;
 
+        // Auto-hide after 3.2s
+        setTimeout(function () {
+          if (!el) return;
+          el.style.transition = 'opacity 300ms ease';
+          el.style.opacity = '0';
+          setTimeout(function(){ if (el) el.style.display = 'none'; }, 320);
+        }, 3200);
+
+        // Allow manual dismiss on click
+        el.addEventListener('click', function () {
+          el.style.transition = 'opacity 150ms ease';
+          el.style.opacity = '0';
+          setTimeout(function(){ el.style.display = 'none'; }, 180);
+        }, { once: true });
+      })();
+    `}
+                        </Script>
+                    </>
+                ) : null}
                 <div className="mt-3 overflow-x-auto">
                     <table className="min-w-full text-sm">
                         <thead>
@@ -278,84 +347,83 @@ export default async function AdminCourseEditorPage({
                         <tbody>
                             {course.lessons.map((l: { id: string; index: number; title: string; videoUrl: string | null }) => (
                                 <tr key={l.id} className="border-b last:border-0 align-top">
+                                    {/* Single UPDATE form for index+title+videoUrl */}
                                     <td className="py-2 pr-4 w-16">
-                                        <form action={updateLessonAction}>
+                                        <form id={`f-${l.id}`} action={updateLessonAction}>
                                             <input type="hidden" name="id" value={l.id} />
                                             <input
                                                 type="number"
                                                 name="index"
+                                                min={1}
                                                 defaultValue={l.index}
                                                 className="w-16 rounded-md border border-slate-300 px-2 py-1"
                                             />
                                         </form>
                                     </td>
                                     <td className="py-2 pr-4">
-                                        <form action={updateLessonAction} className="space-y-1">
-                                            <input type="hidden" name="id" value={l.id} />
-                                            <input
-                                                name="title"
-                                                defaultValue={l.title}
-                                                className="w-full rounded-md border border-slate-300 px-2 py-1"
-                                            />
-                                            <p className="text-xs text-slate-500">
-                                                ID: <code>{l.id}</code>
-                                            </p>
-                                        </form>
+                                        <input
+                                            form={`f-${l.id}`}
+                                            name="title"
+                                            defaultValue={l.title}
+                                            className="w-full rounded-md border border-slate-300 px-2 py-1"
+                                        />
+                                        <p className="text-xs text-slate-500">
+                                            ID: <code>{l.id}</code>
+                                        </p>
                                     </td>
                                     <td className="py-2 pr-4">
-                                        <form action={updateLessonAction}>
+                                        <input
+                                            form={`f-${l.id}`}
+                                            name="videoUrl"
+                                            defaultValue={l.videoUrl ?? ""}
+                                            placeholder="Cloudflare Stream / HLS URL"
+                                            className="w-full rounded-md border border-slate-300 px-2 py-1"
+                                        />
+                                        <div className="text-xs text-slate-500 mt-1">
+                                            <em>Tip:</em> Use{" "}
+                                            <span className="font-medium">Get upload URL</span> to upload a file to Cloudflare Stream,
+                                            then paste the HLS URL here.
+                                        </div>
+                                    </td>
+
+                                    {/* Move has its own form so it only sends id + targetIndex */}
+                                    <td className="py-2 pr-4 whitespace-nowrap">
+                                        <form action={moveLessonAction} className="inline-flex items-center gap-2">
                                             <input type="hidden" name="id" value={l.id} />
                                             <input
-                                                name="videoUrl"
-                                                defaultValue={l.videoUrl ?? ""}
-                                                placeholder="Cloudflare Stream / HLS URL"
-                                                className="w-full rounded-md border border-slate-300 px-2 py-1"
+                                                type="number"
+                                                name="targetIndex"
+                                                min={1}
+                                                defaultValue={l.index}
+                                                className="w-20 rounded-md border border-slate-300 px-2 py-1"
                                             />
-                                        </form>
-                                    </td>
-                                    <td className="py-2 pr-4 whitespace-nowrap">
-                                        <form action={moveLessonAction} className="inline">
-                                            <input type="hidden" name="id" value={l.id} />
-                                            <input type="hidden" name="dir" value="up" />
-                                            <button
-                                                type="submit"
-                                                className="rounded-md border px-2 py-1 mr-1 hover:bg-slate-50"
-                                                title="Move up"
-                                            >
-                                                ↑
-                                            </button>
-                                        </form>
-                                        <form action={moveLessonAction} className="inline">
-                                            <input type="hidden" name="id" value={l.id} />
-                                            <input type="hidden" name="dir" value="down" />
                                             <button
                                                 type="submit"
                                                 className="rounded-md border px-2 py-1 hover:bg-slate-50"
-                                                title="Move down"
+                                                title="Move to index"
                                             >
-                                                ↓
+                                                Move
                                             </button>
                                         </form>
                                     </td>
+
                                     <td className="py-2">
                                         <div className="flex items-center gap-2">
-                                            <form action={updateLessonAction}>
-                                                <input type="hidden" name="id" value={l.id} />
-                                                <button
-                                                    type="submit"
-                                                    className="rounded-md bg-slate-900 text-white px-3 py-1.5 text-xs hover:bg-slate-800"
-                                                >
-                                                    Update
-                                                </button>
-                                            </form>
+                                            <button
+                                                type="submit"
+                                                form={`f-${l.id}`}
+                                                className="rounded-md bg-slate-900 text-white px-3 py-1.5 text-xs hover:bg-slate-800"
+                                                title="Save changes"
+                                            >
+                                                Update
+                                            </button>
+
                                             <form action={deleteLessonAction}>
                                                 <input type="hidden" name="id" value={l.id} />
                                                 <button
                                                     type="submit"
                                                     className="rounded-md border border-red-200 text-red-700 px-3 py-1.5 text-xs hover:bg-red-50"
-                                                    onClick={(e) => {
-                                                        if (!confirm("Delete this lesson?")) e.preventDefault();
-                                                    }}
+                                                    title="Delete lesson"
                                                 >
                                                     Delete
                                                 </button>
@@ -384,7 +452,7 @@ export default async function AdminCourseEditorPage({
                             <label className="block text-sm font-medium">Index</label>
                             <input
                                 type="number"
-                                name="lessonIndex"
+                                name="index"
                                 min={1}
                                 defaultValue={course.lessons.length + 1}
                                 className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5"
@@ -394,7 +462,7 @@ export default async function AdminCourseEditorPage({
                         <div className="sm:col-span-1">
                             <label className="block text-sm font-medium">Title</label>
                             <input
-                                name="lessonTitle"
+                                name="title"
                                 className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5"
                                 required
                             />
@@ -402,7 +470,7 @@ export default async function AdminCourseEditorPage({
                         <div className="sm:col-span-3">
                             <label className="block text-sm font-medium">Video URL</label>
                             <input
-                                name="lessonVideoUrl"
+                                name="videoUrl"
                                 placeholder="Cloudflare Stream / HLS URL"
                                 className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5"
                             />
@@ -417,6 +485,17 @@ export default async function AdminCourseEditorPage({
                             </button>
                         </div>
                     </form>
+                </div>
+            </section>
+
+            {/* Stream cost estimator */}
+            <section className="mt-8 rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-4">
+                <h2 className="font-semibold">Estimate Video Cost</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                    Quick calculator for Cloudflare Stream cost and breakeven price.
+                </p>
+                <div className="mt-3">
+                    <StreamCostEstimator />
                 </div>
             </section>
 
@@ -438,8 +517,13 @@ async function AdminCourseExtras({ courseId }: { courseId: string }) {
         _count: { _all: true },
     });
 
-    const done = totals.find((t: { completed: boolean; _count: { _all: number } }) => t.completed)?._count._all ?? 0;
-    const all = totals.reduce((a: number, t: { _count: { _all: number } }) => a + t._count._all, 0);
+    const done =
+        totals.find((t: { completed: boolean; _count: { _all: number } }) => t.completed)?._count
+            ._all ?? 0;
+    const all = totals.reduce(
+        (a: number, t: { _count: { _all: number } }) => a + t._count._all,
+        0
+    );
 
     return (
         <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm p-4">

@@ -5,49 +5,36 @@ import * as React from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-/**
- * Reusable confirm button for admin actions (delete, publish, etc.).
- *
- * Usage:
- * <ConfirmButton
- *   title="Delete course?"
- *   description="This cannot be undone. All lessons will remain but the course will be hidden."
- *   confirmText="Delete"
- *   variant="destructive"
- *   onConfirm={async () => { await doDelete(); }}
- * >
- *   Delete
- * </ConfirmButton>
- */
-
 export type ConfirmButtonProps = {
-    /** Visible label or custom children inside the trigger button */
     children: React.ReactNode;
-    /** Async action executed after the user confirms */
-    onConfirm: () => void | Promise<void>;
-    /** Optional error handler for failed confirm actions */
+    /** For async client actions */
+    onConfirm?: () => void | Promise<void>;
+    /** For server actions (inside <form action={...}>) */
+    formSubmit?: boolean;
+    /** Optional error handler */
     onError?: (error: unknown) => void;
-    /** Modal title */
+    /** Dialog title */
     title?: string;
-    /** One‑line explanation shown in the dialog */
     description?: string;
-    /** Text for the confirm CTA */
     confirmText?: string;
-    /** Text for the cancel CTA */
     cancelText?: string;
-    /** Pass through to shadcn Button */
     variant?: React.ComponentProps<typeof Button>["variant"];
     size?: React.ComponentProps<typeof Button>["size"];
     className?: string;
-    /** Disable the trigger */
     disabled?: boolean;
-    /** Optional icon to render inside the trigger button (left side) */
     iconLeft?: React.ReactNode;
 };
 
+/**
+ * ConfirmButton
+ * Works in two modes:
+ * - Wraps a server action form submit (with `formSubmit`).
+ * - Runs an async `onConfirm` function directly.
+ */
 export default function ConfirmButton({
     children,
     onConfirm,
+    formSubmit = false,
     onError,
     title = "Are you sure?",
     description,
@@ -59,31 +46,33 @@ export default function ConfirmButton({
     disabled,
     iconLeft,
 }: ConfirmButtonProps): React.JSX.Element {
-    const [open, setOpen] = React.useState<boolean>(false);
-    const [loading, setLoading] = React.useState<boolean>(false);
+    const [open, setOpen] = React.useState(false);
+    const [loading, setLoading] = React.useState(false);
 
-    // Accessibility: label/description IDs
     const labelId = React.useId();
     const descId = React.useId();
 
-    // Focus management: return focus to trigger; focus confirm on open
     const triggerRef = React.useRef<HTMLButtonElement | null>(null);
     const confirmRef = React.useRef<HTMLButtonElement | null>(null);
 
     const handleConfirm = async () => {
+        if (formSubmit) {
+            // Let the enclosing form submit
+            setOpen(false);
+            return;
+        }
+        if (!onConfirm) return;
         try {
             setLoading(true);
             await onConfirm();
             setOpen(false);
-        } catch (err: unknown) {
+        } catch (err) {
             if (onError) onError(err);
-            // keep dialog open so the user can retry or cancel
         } finally {
             setLoading(false);
         }
     };
 
-    // Close on Escape
     React.useEffect(() => {
         if (!open) return;
         const onKey = (e: KeyboardEvent) => {
@@ -93,18 +82,12 @@ export default function ConfirmButton({
         return () => window.removeEventListener("keydown", onKey);
     }, [open]);
 
-    // Focus confirm button when opening; return focus to trigger when closing
     React.useEffect(() => {
         if (open) {
-            // defer to next tick to ensure element exists
-            const id = window.setTimeout(() => {
-                confirmRef.current?.focus();
-            }, 0);
+            const id = window.setTimeout(() => confirmRef.current?.focus(), 0);
             return () => window.clearTimeout(id);
         }
-        // when dialog just closed, restore focus
         triggerRef.current?.focus();
-        return undefined;
     }, [open]);
 
     return (
@@ -115,6 +98,7 @@ export default function ConfirmButton({
                 size={size}
                 className={className}
                 disabled={disabled || loading}
+                type={formSubmit ? "button" : "button"}
                 onClick={() => setOpen(true)}
             >
                 {loading ? (
@@ -124,13 +108,13 @@ export default function ConfirmButton({
                     </>
                 ) : (
                     <>
-                        {iconLeft ? <span className="mr-2 inline-flex">{iconLeft}</span> : null}
+                        {iconLeft && <span className="mr-2 inline-flex">{iconLeft}</span>}
                         {children}
                     </>
                 )}
             </Button>
 
-            {open ? (
+            {open && (
                 <div
                     role="dialog"
                     aria-modal="true"
@@ -138,22 +122,20 @@ export default function ConfirmButton({
                     aria-describedby={description ? descId : undefined}
                     className="fixed inset-0 z-[100] flex items-center justify-center p-4"
                 >
-                    {/* Backdrop */}
                     <div
                         className="absolute inset-0 bg-black/40"
-                        onClick={() => (loading ? null : setOpen(false))}
+                        onClick={() => (!loading ? setOpen(false) : null)}
                     />
 
-                    {/* Card */}
                     <div className="relative z-10 w-full max-w-sm rounded-xl bg-white p-4 shadow-xl ring-1 ring-slate-200">
                         <div id={labelId} className="text-base font-semibold">
                             {title}
                         </div>
-                        {description ? (
+                        {description && (
                             <div id={descId} className="mt-1 text-sm text-slate-600">
                                 {description}
                             </div>
-                        ) : null}
+                        )}
 
                         <div className="mt-4 flex items-center justify-end gap-2">
                             <Button
@@ -166,7 +148,7 @@ export default function ConfirmButton({
                             </Button>
                             <Button
                                 ref={confirmRef}
-                                type="button"
+                                type={formSubmit ? "submit" : "button"}
                                 variant={variant === "destructive" ? "destructive" : "default"}
                                 onClick={handleConfirm}
                                 disabled={loading}
@@ -183,7 +165,7 @@ export default function ConfirmButton({
                         </div>
                     </div>
                 </div>
-            ) : null}
+            )}
         </>
     );
 }

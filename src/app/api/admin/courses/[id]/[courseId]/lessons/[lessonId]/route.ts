@@ -1,6 +1,6 @@
 
 
-// src/app/api/admin/courses/[courseId]/lessons/[lessonId]/route.ts
+// src/app/api/admin/courses/[id]/lessons/[lessonId]/route.ts
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { safeGetServerSession } from "@/lib/auth";
@@ -48,7 +48,7 @@ async function loadLessonOr404(courseId: string, lessonId: string) {
     return lesson;
 }
 
-// GET /api/admin/courses/[courseId]/lessons/[lessonId]
+// GET /api/admin/courses/[id]/lessons/[lessonId]
 export async function GET(_req: Request, { params }: Params) {
     const gate = await requireAdmin();
     if (!gate.ok) return gate.res;
@@ -61,7 +61,7 @@ export async function GET(_req: Request, { params }: Params) {
     return NextResponse.json(lesson);
 }
 
-// PATCH /api/admin/courses/[courseId]/lessons/[lessonId]
+// PATCH /api/admin/courses/[id]/lessons/[lessonId]
 export async function PATCH(req: Request, { params }: Params) {
     const gate = await requireAdmin();
     if (!gate.ok) return gate.res;
@@ -147,7 +147,7 @@ export async function PATCH(req: Request, { params }: Params) {
     }
 }
 
-// DELETE /api/admin/courses/[courseId]/lessons/[lessonId]
+// DELETE /api/admin/courses/[id]/lessons/[lessonId]
 export async function DELETE(_req: Request, { params }: Params) {
     const gate = await requireAdmin();
     if (!gate.ok) return gate.res;

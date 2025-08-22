@@ -1,6 +1,6 @@
 
 
-// src/app/api/admin/courses/[courseId]/lessons/route.ts
+// src/app/api/admin/courses/[id]/lessons/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { safeGetServerSession } from "@/lib/auth";
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: { courseId: s
     const gate = await requireAdmin();
     if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
-    const courseId = params.courseId;
+    const courseId = params.id;
     if (!courseId) return NextResponse.json({ error: "Missing courseId" }, { status: 400 });
 
     // Ensure course exists

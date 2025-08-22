@@ -1,39 +1,11 @@
 // src/app/admin/users/page.tsx
 import prisma from "@/lib/prisma";
 import { requireAdminOrNotFound } from "@/lib/auth";
+import UserRoleSelect from '@/components/admin/UserRoleSelect';
 
 export const dynamic = "force-dynamic";
 
 type Search = { q?: string; page?: string };
-
-/* ---------------- server actions ---------------- */
-async function toggleRole(formData: FormData) {
-    "use server";
-    await requireAdminOrNotFound();
-
-    const userId = String(formData.get("userId") ?? "");
-    const roleRaw = String(formData.get("role") ?? "");
-    const nextRole = roleRaw === "admin" ? "admin" : "user";
-
-    if (!userId) throw new Error("Missing userId");
-
-    // Optional: protect against removing the last admin
-    if (nextRole === "user") {
-        const adminCount = await prisma.user.count({ where: { role: "admin" } });
-        const thisUser = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { role: true },
-        });
-        if (thisUser?.role === "admin" && adminCount <= 1) {
-            throw new Error("Cannot demote the last admin");
-        }
-    }
-
-    await prisma.user.update({
-        where: { id: userId },
-        data: { role: nextRole },
-    });
-}
 
 export default async function AdminUsers({
     searchParams,
@@ -130,21 +102,7 @@ export default async function AdminUsers({
                                 <td className="px-3 py-2">{u.name ?? "—"}</td>
                                 <td className="px-3 py-2">{u.email ?? "—"}</td>
                                 <td className="px-3 py-2">
-                                    <form action={toggleRole}>
-                                        <input type="hidden" name="userId" value={u.id} />
-                                        <select
-                                            name="role"
-                                            defaultValue={u.role ?? "user"}
-                                            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-                                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                                                const form = e.currentTarget.form;
-                                                if (form) form.requestSubmit();
-                                            }}
-                                        >
-                                            <option value="user">user</option>
-                                            <option value="admin">admin</option>
-                                        </select>
-                                    </form>
+                                    <UserRoleSelect userId={u.id} initialRole={(u.role as 'user' | 'admin') ?? 'user'} />
                                 </td>
                                 <td className="px-3 py-2">{u._count.enrollments}</td>
                                 <td className="px-3 py-2">{u._count.lessonNotes}</td>

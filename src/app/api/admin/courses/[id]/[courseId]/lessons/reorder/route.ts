@@ -1,4 +1,4 @@
-// src/app/api/admin/courses/[courseId]/lessons/reorder/route.ts
+// src/app/api/admin/courses/[id]/lessons/reorder/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { safeGetServerSession } from "@/lib/auth";
